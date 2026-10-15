@@ -244,37 +244,25 @@ It is producing a distribution over many possible continuations.
 
 # 6. The next-token prediction equation
 
-You don't need advanced mathematics here.
+You don't need advanced mathematics here. Just understand this notation:
 
-Just understand this notation:
+$$ P(x_{t+1}\mid x_1,x_2,\dots,x_t) $$
 
-$$
-P(x_{t+1}\mid x_1,x_2,\dots,x_t)
-$$
+It means: **the probability of the next token given all previous tokens.**
 
-It means:
+### Example
+$$ P(\text{Paris} \mid \text{The capital of France is}) $$
 
-> Probability of the next token given all previous tokens.
+The model is estimating this conditional distribution across its entire vocabulary. 
 
-For example:
+### Sampling the Output
+Once the distribution is calculated, the next step is selection:
 
-$$
-P(\text{Paris} \mid \text{The capital of France is})
-$$
+$$ x_{t+1} \sim P(x_{t+1}\mid x_1,\dots,x_t) $$
 
-The model is estimating this conditional distribution.
+This means **the next token is sampled (selected) according to that distribution.** Depending on the generation settings (like temperature or top-p), the model will pick a token based on these probabilities.
 
-Then:
-
-$$
-x_{t+1} \sim P(x_{t+1}\mid x_1,\dots,x_t)
-$$
-
-means the next token is selected according to that distribution.
-
-You don't need to derive how the neural network produces this distribution yet.
-
-That belongs much later.
+You don't need to derive how the neural network produces this distribution yet. That belongs much later.
 
 ---
 
