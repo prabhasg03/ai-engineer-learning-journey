@@ -244,23 +244,27 @@ It is producing a distribution over many possible continuations.
 
 # 6. The next-token prediction equation
 
-# Understanding Next-Token Prediction
-
 You don't need advanced mathematics here. Just understand this notation:
 
-$$ P(X_{t+1} = x_{t+1} \mid X_1 = x_1, X_2 = x_2, \dots, X_t = x_t) $$
+$$ 
+P(X_{t+1} = x_{t+1} \mid X_1 = x_1, X_2 = x_2, \dots, X_t = x_t) 
+$$
 
 It means: **the probability of a specific next token occurring, given the sequence of all previous tokens.**
 
 ### Example
-$$ P(X_{t+1} = \text{"Paris"} \mid X_1 \dots X_t = \text{"The capital of France is"}) $$
+$$ 
+P(X_{t+1} = \text{"Paris"} \mid X_1 \dots X_t = \text{"The capital of France is"}) 
+$$
 
 The language model estimates this conditional probability distribution over its entire vocabulary of possible tokens.
 
 ### Sampling the Output
 Once the probability distribution is computed, the actual generation happens through sampling:
 
-$$ x_{t+1} \sim P(X_{t+1} \mid x_1, \dots, x_t) $$
+$$ 
+x_{t+1} \sim P(X_{t+1} \mid x_1, \dots, x_t)
+$$
 
 This means **the next token ($x_{t+1}$) is randomly selected according to that probability distribution.** 
 
