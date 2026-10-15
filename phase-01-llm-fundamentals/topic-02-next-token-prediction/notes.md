@@ -244,37 +244,34 @@ It is producing a distribution over many possible continuations.
 
 # 6. The next-token prediction equation
 
-You don't need advanced mathematics here.
+You don't need advanced mathematics here. Just understand this notation:
 
-Just understand this notation:
-
-$$
-P(x_{t+1}\mid x_1,x_2,\dots,x_t)
+$$ 
+P(X_{t+1} = x_{t+1} \mid X_1 = x_1, X_2 = x_2, \dots, X_t = x_t) 
 $$
 
-It means:
+It means: **the probability of a specific next token occurring, given the sequence of all previous tokens.**
 
-> Probability of the next token given all previous tokens.
-
-For example:
-
-$$
-P(\text{Paris} \mid \text{The capital of France is})
+### Example
+$$ 
+P(X_{t+1} = \text{"Paris"} \mid X_1 \dots X_t = \text{"The capital of France is"}) 
 $$
 
-The model is estimating this conditional distribution.
+The language model estimates this conditional probability distribution over its entire vocabulary of possible tokens.
 
-Then:
+### Sampling the Output
+Once the probability distribution is computed, the actual generation happens through sampling:
 
+$$ 
+x_{t+1} \sim P(X_{t+1} \mid x_1, \dots, x_t)
 $$
-x_{t+1} \sim P(x_{t+1}\mid x_1,\dots,x_t)
-$$
 
-means the next token is selected according to that distribution.
+This means **the next token ($x_{t+1}$) is randomly selected according to that probability distribution.** 
 
-You don't need to derive how the neural network produces this distribution yet.
+* If a token has a high probability (like "Paris"), it has a high chance of being chosen.
+* If a token has a low probability (like "Apple"), it has a very low chance of being chosen.
 
-That belongs much later.
+You don't need to derive how the neural network produces this distribution yet. That belongs much later.
 
 ---
 
