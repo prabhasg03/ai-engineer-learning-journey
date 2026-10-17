@@ -166,8 +166,6 @@ Relevant contributions may include:
 
 Where applicable, the repository will reference the original project, issue, and pull request rather than duplicating external project code.
 
-e:\ai engineer\SYLLABUS.md---
-
 ## Curriculum
 
 The complete learning structure, prerequisites, topic requirements, exercises, resources, and completion criteria are maintained in:
