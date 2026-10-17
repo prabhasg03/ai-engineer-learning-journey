@@ -215,6 +215,20 @@ Count tokens
 Inspect individual tokens when necessary
 ```
 
+Programmatically:
+
+```python
+# pip install tiktoken
+import tiktoken
+
+enc = tiktoken.get_encoding("cl100k_base")   # an OpenAI-family encoding
+text = "Hello world, tokenization!"
+
+ids = enc.encode(text)
+print(len(ids), ids)                     # token count, then the IDs
+print([enc.decode([i]) for i in ids])    # the piece each token represents
+```
+
 A useful experiment is to compare the tokenization of:
 
 ```text
@@ -251,7 +265,15 @@ Code, long identifiers, URLs, and unusual strings may tokenize less efficiently 
 
 ### Multilingual Text
 
-Different languages and writing systems can have substantially different tokenization efficiency depending on the tokenizer.
+Different languages and writing systems can have substantially different tokenization efficiency depending on the tokenizer. Languages that are underrepresented in training are split into more, smaller tokens — so the *same* sentence can cost two to three times more tokens in, say, Japanese or Hindi than in English. This is sometimes called **non-English inflation**.
+
+### Weird Behaviours
+
+Because the model sees tokens rather than characters, a few everyday tasks behave oddly:
+
+* **R-counting.** "How many *r*s are in *strawberry*?" is hard for a model: it never sees the letters, only a handful of token IDs, so it has to infer the spelling instead of counting it.
+* **Trailing whitespace.** A trailing space usually merges into the *next* token (`" world"` is a single token), so an extra space at the end of a prompt changes how the following text tokenizes rather than becoming a token of its own.
+* **Non-English inflation.** The cost consequence of the multilingual point above: identical meaning, very different token counts, very different price.
 
 ---
 

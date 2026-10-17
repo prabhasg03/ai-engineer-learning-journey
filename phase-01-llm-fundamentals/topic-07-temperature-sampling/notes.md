@@ -1772,3 +1772,17 @@ The central distinction is:
 And the engineering principle is:
 
 > **Choose sampling settings according to the task, then validate the output independently.**
+
+
+---
+
+## Sources
+
+* [Andrej Karpathy - State of GPT](https://www.youtube.com/watch?v=bZQun8Y4L2A)
+* [Chip Huyen - Notes on LLM Engineering](https://huyenchip.com/2023/04/11/llm-engineering.html)
+
+## Related Topics
+
+* Topic 2 - Next-token prediction (the distribution being reshaped)
+* Topic 8 - Hallucination (a sampling-adjacent failure mode)
+* Topic 12 - Structured output (why extraction wants temperature 0)

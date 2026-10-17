@@ -47,6 +47,19 @@ Overflow means the assembled request is larger than the permitted context. The r
 
 Many APIs reject the request with a context-length or invalid-request error. No completion is generated. This is the safest behaviour because it makes loss of information explicit.
 
+### Named error anchors
+
+The same overflow surfaces under different names depending on the provider, and the exact anchor tells you what to do:
+
+| Provider / path | Typical signal |
+| --- | --- |
+| OpenAI | `400` with `context_length_exceeded` |
+| Anthropic | `400 invalid_request_error` — "prompt is too long" |
+| Byte-size limits (any provider) | `413 Payload Too Large` |
+| Self-hosted / legacy | silent truncation, or only a warning in the logs |
+
+On `400 context_length_exceeded` you compact or shorten the prompt and retry; on `413` the *bytes* are too large regardless of token count. Silent truncation is the dangerous case precisely because there is no error to catch — inspect the serialized request instead.
+
 ### Silent or automatic truncation
 
 Some clients, frameworks, or APIs remove tokens to make the request fit. Possible policies include:
@@ -73,7 +86,7 @@ The transformer processes relationships between tokens using attention. In a str
 n × n = O(n²)
 ```
 
-Doubling the sequence length can therefore require roughly four times as many attention-score interactions, with additional memory and latency costs. Real systems use optimizations, specialized attention patterns, caching, and hardware techniques, so the exact cost is implementation-dependent. The key point remains: longer contexts are computationally expensive, and models impose a finite maximum.
+In other words the cost is **quadratic** in sequence length: doubling the length can require roughly four times as many attention-score interactions — "square the length, quadruple the work" — with additional memory and latency costs. Real systems use optimizations, specialized attention patterns, caching, and hardware techniques, so the exact cost is implementation-dependent. The key point remains: longer contexts are computationally expensive, and models impose a finite maximum.
 
 During autoregressive generation, the model normally reuses cached key/value states for earlier tokens. This avoids recomputing all earlier work for every new token, but the stored cache still grows with the context length and consumes memory.
 
@@ -199,3 +212,18 @@ Blindly sending it may produce an error. Automatically removing the first 2,000 
 - Can you explain why compaction is not the same as memory?
 - Can you identify what was lost when a conversation “forgot” a requirement?
 - Can you describe how context limits affect latency, cost, and reliability?
+
+
+---
+
+## Sources
+
+* [Andrej Karpathy - Deep Dive into LLMs](https://www.youtube.com/watch?v=7xTGNNLPyMI)
+* [OpenAI - What are tokens and how to count them](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them)
+
+## Related Topics
+
+* Topic 1 - Tokens
+* Topic 2 - Next-token prediction
+* Topic 4 - Statelessness (why history is resent and therefore grows)
+* Topics 35-37 - Context engineering (compaction and retrieval in depth)

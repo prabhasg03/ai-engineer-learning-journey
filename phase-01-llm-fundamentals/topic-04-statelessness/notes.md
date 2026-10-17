@@ -1893,3 +1893,18 @@ The system is responsible for maintaining and constructing the state/context tha
 **One sentence to remember:**
 
 > **Statelessness means the application, not the individual API call, is responsible for carrying the relevant conversation state forward—and as that state grows, repeatedly supplying it can increase token usage, cost, processing, and context pressure.**
+
+
+---
+
+## Sources
+
+* [Chip Huyen - Notes on LLM Engineering](https://huyenchip.com/2023/04/11/llm-engineering.html)
+* [Anthropic - Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+
+## Related Topics
+
+* Topic 3 - The context window
+* Topic 6 - Your first LLM API call (the `messages` array you resend)
+* Topics 35-37 - Context engineering
+* Topic 61 - Caching

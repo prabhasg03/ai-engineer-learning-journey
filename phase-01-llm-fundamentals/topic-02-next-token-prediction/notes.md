@@ -1166,13 +1166,19 @@ That is the core of Topic 2.
 
 Generation continues until some stopping condition is reached.
 
-Conceptually, this could be:
+Conceptually, the usual stopping conditions are:
+
+* an **end-of-sequence (`EOS`) token** the model itself emits — the learned "I am finished" signal; or
+* a configured **output cap** (for example `max_tokens`); or
+* a **stop sequence** the application supplies.
 
 ```text
-stop token
+stop token (EOS)  |  output cap  |  stop sequence
 ```
 
 or a configured output limit / other generation constraint.
+
+Nothing in the training objective prefers brevity: the model keeps producing plausible tokens until one of these conditions fires, so an instruction such as "be concise" is doing real work rather than restating a default.
 
 So:
 
@@ -1740,6 +1746,8 @@ new distribution
 trajectory shifts
 ```
 
+Each token the model emits becomes part of the *next* context, so one early wrong turn **compounds**: the model conditions on its own mistake and drifts further from the original goal. This is why "losing the thread" is a mechanical consequence of autoregression, not a memory failure.
+
 All three occur within:
 
 ```text
@@ -2031,3 +2039,18 @@ Before marking Topic 2 complete, you should be able to answer these **without no
 20. Explain verbosity using only the next-token mechanism.
 
 ---
+
+
+---
+
+## Sources
+
+* [Andrej Karpathy - Intro to Large Language Models](https://www.youtube.com/watch?v=zjkBMFhNj_g)
+* [Andrej Karpathy - State of GPT](https://www.youtube.com/watch?v=bZQun8Y4L2A)
+
+## Related Topics
+
+* Topic 1 - Tokens (what the model actually consumes)
+* Topic 3 - The context window (the budget this loop fills)
+* Topic 8 - Hallucination (confident wrongness, in depth)
+* Topic 65 - Training objective vs inference behaviour (the deeper theory)
