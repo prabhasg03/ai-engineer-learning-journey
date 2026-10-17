@@ -1,0 +1,15 @@
+Deployment checklist
+
+Before deploying the API, confirm that all database migrations have run and that the
+queue has been drained so no in-flight jobs are lost. Deploy the new image to one node
+first and watch the error rate for two minutes; if it stays flat, roll out to the rest.
+Warm the caches before flipping the load balancer, otherwise the first thousand requests
+will be slow. After the flip, watch latency and the error rate for ten minutes.
+
+Roll back immediately if the error rate exceeds one percent or if p99 latency doubles.
+A rollback means reverting the image tag, restoring the previous load-balancer config,
+and re-running any migrations only if they were backwards-compatible. If a migration was
+destructive, restore from the pre-deploy snapshot instead.
+
+Common failures: forgetting to warm the cache, deploying during a traffic peak, and
+skipping the smoke suite. Each of these has caused a production incident at least once.

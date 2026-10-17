@@ -1,0 +1,5 @@
+requests>=2.31
+# optional: exact token counts and cost estimates
+tiktoken>=0.7
+# optional: run the test suite
+pytest>=8.0
