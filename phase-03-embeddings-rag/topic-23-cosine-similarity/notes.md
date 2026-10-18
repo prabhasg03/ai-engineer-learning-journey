@@ -51,6 +51,13 @@ inner product           = dot(a, b)  (unbounded)
 
 Interpretation cheat-line: **1 = same direction, 0 = right angle (unrelated), -1 = opposite.** In text-search practice similarities cluster in [0, 1]; negatives come from models that emit signed embeddings.
 
+Calibrate your eye with the angle → cosine table (cos(θ); `angle_degrees` inverts it):
+
+```text
+angle   0°     30°     45°     60°     90°    120°    180°
+cos     1.0    .866    .707    .500    0.0    -.500   -1.0
+```
+
 Another hand example for 3-D (do it yourself once): a = (1,2,2), b = (2,4,1) → dot = 12, |a| = 3, |b| = √21, cos = 12/(3√21) ≈ 0.873. `test_higher_dimensions_hand_example` asserts exactly that arithmetic.
 
 ---
@@ -112,7 +119,7 @@ Cosine "distance" is not a metric in the triangle-inequality sense — don't bui
 
 Why is `<#>` **negative**? Because Postgres index scans walk operator results in **ASC** order: "most similar" must be the *smallest* value like a distance. Negating flips big-dot-product (similar) into very-negative (scans first). To recover the inner product: `(a <#> b) * -1`.
 
-Corresponditions to commit to memory:
+Mappings to commit to memory:
 
 ```text
 OpenAI-style pipeline                     pgvector
@@ -141,7 +148,7 @@ The question every RAG team asks in week 2: "what cosine score is 'good enough' 
 1. Label a batch: pairs `(similarity, is_relevant)` from your golden set — real queries against known-good and known-irrelevant chunks (Topic 22 §6).
 2. Sweep candidate thresholds; for each compute precision / recall / F1 (`ThresholdRow`).
 3. Pick on the trade you need: F1's argmax (`best_f1_threshold`) as the starting point, then slide toward precision if wrong answers cost more than empty ones (support), toward recall if the user should see *something* (agent retrieval), and confirm with the LLM-side eval later.
-4. Re-check after: model switch, chunk-size change, big corpus growth. The threshold is **configuration for a point in time**, not a constant.
+4. Re-check after: model switch, chunk-size change, corpus-growth/new-content-type (distribution drift), embedding-provider batch behaviour change. The threshold is **configuration for a point in time**, not a constant — treat re-running the sweep as part of any eval that touches ingestion.
 
 `calibration_report()` prints the sweep table; the demo notebook renders it.
 

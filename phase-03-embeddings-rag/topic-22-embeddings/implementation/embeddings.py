@@ -30,6 +30,7 @@ from __future__ import annotations
 import hashlib
 import math
 import re
+import statistics
 from dataclasses import dataclass, field
 
 # ---------------------------------------------------------------------------
@@ -102,8 +103,8 @@ class CooccurrenceEmbedder:
     within ``window`` tokens of each other in a sentence, we count the pair.
     We then replace raw counts with PPMI (positive pointwise mutual
     information) so that "explains away" pairs that co-occur just because
-    both words are frequent. Column vectors (rows?) - each word's vector is
-    its PPMI profile over the other words, L2-normalised.
+    both words are frequent. Each word's vector is its PPMI profile over
+    the other words, L2-normalised.
 
     Phrase embedding = mean of known word vectors, re-normalised. Words
     outside the vocabulary contribute nothing (documented limitation: real
@@ -309,10 +310,47 @@ def contrastive_score(
     q_vec = embed_fn(query)
     pos_scores = [cosine_similarity(q_vec, embed_fn(text)) for text in positives]
     neg_scores = [cosine_similarity(q_vec, embed_fn(text)) for text in negatives]
-    import statistics
-
     pos_scores = [s for s in pos_scores if not math.isnan(s)]
     neg_scores = [s for s in neg_scores if not math.isnan(s)]
     pos_mean = statistics.mean(pos_scores) if pos_scores else 0.0
     neg_mean = statistics.mean(neg_scores) if neg_scores else 0.0
     return pos_mean - neg_mean
+
+
+# ---------------------------------------------------------------------------
+# Offline demo: `python embeddings.py`
+# ---------------------------------------------------------------------------
+
+
+def _demo() -> None:
+    emb = CooccurrenceEmbedder(EXAMPLE_CORPUS, window=2)
+    print("topic 22 - embeddings: meaning as geometry (offline demo)")
+    print(f"cooccurrence embedder over EXAMPLE_CORPUS: {emb.dimensions}-d vectors")
+    print("(one axis per vocab word; similar words keep similar company)")
+    for phrase in ["a loyal young dog", "the playful puppy", "bond yields climb"]:
+        q = emb.embed_text(phrase)
+        best = most_similar(q, emb.vocab)[:3]
+        print(f"embed({phrase!r}) nearest vocab words: "
+              + ", ".join(f"{name}={score:.3f}" for name, score in best))
+    meta = {"dog": emb.embed_word("dog"), "loyal": emb.embed_word("loyal"),
+            "bank": emb.embed_word("bank"), "yields": emb.embed_word("yields")}
+    print(f"cos(dog, loyal) = {cosine_similarity(meta['dog'], meta['loyal']):.3f}"
+          f"   cos(dog, yields) = {cosine_similarity(meta['dog'], meta['yields']):.3f}")
+
+    hashing = HashingEmbedder(dimensions=64)
+    full = hashing.embed("quarterly revenue report")
+    unit = math.isclose(math.sqrt(sum(v * v for v in full)), 1.0)
+    print(f"hashing embedder: 64-d by construction, unit length = {unit}")
+    for dims in (16, 32, 64):
+        cut = truncate(full, dims)
+        print(f"  slice to {dims:>2}-d and re-normalise, still unit: "
+              f"{math.isclose(math.sqrt(sum(v * v for v in cut)), 1.0)}")
+
+    query = emb.embed_text("a loyal dog")
+    kept = neighbor_stability(query, emb.vocab, top_k=5, dimensions=8)
+    print(f"matryoshka cut to 8 dims: {kept}/5 of the top-5 word neighbours survive")
+    print(f"storage_bytes(1536) = {storage_bytes(1536)} bytes/row (pgvector accounting)")
+
+
+if __name__ == "__main__":
+    _demo()

@@ -216,8 +216,38 @@ def calibration_report(pairs, thresholds) -> str:
     rows = sweep_thresholds(pairs, thresholds)
     lines = ["threshold | precision | recall | f1", "----------+-----------+--------+----"]
     for r in rows:
-        lines.append(
-            f"    {r.threshold:.2f}    |   {r.precision:.2f}    |  {r.recall:.2f}  | {r.f1:.2f}"
-        )
-        lines[-1] = f"{r.threshold:8.2f} | {r.precision:9.2f} | {r.recall:6.2f} | {r.f1:.2f}"
+        lines.append(f"{r.threshold:8.2f} | {r.precision:9.2f} | {r.recall:6.2f} | {r.f1:.2f}")
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Offline demo: `python cosine.py`
+# ---------------------------------------------------------------------------
+
+
+def _demo() -> None:
+    a, b = HAND_COMPUTATION["a"], HAND_COMPUTATION["b"]
+    print("topic 23 - cosine similarity by hand (offline demo)")
+    print("the worked example: a = (1, 2), b = (2, 1)")
+    print(f"  dot={dot_product(a, b)} |a|={magnitude(a):.4f} |b|={magnitude(b):.4f}"
+          f" cos={cosine_similarity(a, b):.4f} angle={angle_degrees(a, b):.4f} deg"
+          f" cosine_distance={cosine_distance(a, b):.4f}")
+    scaled = [1000.0 * x for x in a]
+    print(f"magnitude invariance: cosine({scaled}, {b}) = {cosine_similarity(scaled, b):.4f}"
+          f" but euclidean = {euclidean_distance(scaled, b):.1f}")
+    print("pgvector operator mirrors on the same vectors:")
+    print(f"  <-> {l2_distance(a, b):.4f}   <=> {cosine_distance(a, b):.4f}"
+          f"   <#> {negative_inner_product(a, b):.4f}")
+    import numpy
+
+    matrix = numpy.array([[1.0, 2.0], [2.0, 1.0], [-1.0, 0.5], [0.0, 1.0]])
+    order = np_rank_by_similarity(matrix, [1, 2], k=3)
+    print(f"numpy batch ranking against (1, 2): rows {order}")
+    pairs = [(0.93, True), (0.90, True), (0.88, True), (0.61, False),
+             (0.55, True), (0.40, False), (0.35, False), (0.21, False)]
+    print("threshold sweep on a labelled golden set:")
+    print(calibration_report(pairs, [0.9, 0.8, 0.7, 0.6, 0.5, 0.4]))
+
+
+if __name__ == "__main__":
+    _demo()

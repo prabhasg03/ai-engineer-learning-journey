@@ -99,6 +99,14 @@ cos(query, finance-rally) ≈ 0.1x   (low: unrelated)
 
 Check the provider's docs — this table ages, the *categories* do not: **dimensions, cost, context window (max input length), Matryoshka support, prefixes, language coverage.**
 
+Day-1 practicalities of calling a real embedding API, worth knowing before the first integration:
+
+- **Batch your inputs.** Every embedding API takes a *list* of texts per request (100s–1000s at a time, each provider different); one-text-per-request burns latency and money for nothing.
+- **Cost is per input token and cheap in absolute terms** — roughly two orders of magnitude below generation pricing; corpus re-embedding is billed once per model switch, which is why the golden-set decision (§6) happens *before* the bulk job.
+- **Cache aggressively**: key results by (model, dimensions, content hash) so unchanged chunks are never re-embedded — the same key the Topic 26 upsert story uses.
+- **Store provenance with every vector** — `model_name`, `dimensions`, and a text hash column. When you switch models (§6 caveat 4), you need to know exactly which rows are stale.
+- **Respect the input window**: chunk to your biggest model's limit minus margin; texts that overflow are silently truncated, not rejected (Topic 24's window-limits reason).
+
 The syllabus point is not the table; it is that all these knobs are *knowable* and each one has a reason:
 
 ### 5.2 Dimensions — what they cost and what they buy

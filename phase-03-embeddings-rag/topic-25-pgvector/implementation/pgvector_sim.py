@@ -110,7 +110,10 @@ def _distance(op: str, a: list[float], b: list[float]) -> float:
 
 
 TYPE_DIM_LIMITS = {"vector": 16_000, "halfvec": 16_000, "bit": 64_000, "sparsevec": 16_000}
-INDEX_DIM_LIMITS = {"vector": 2_000, "halfvec": 4_000, "bit": 64_000}
+# NOTE from the README's index section: vector indexes cap at 2,000 dims
+# (halfvec 4,000, bit 64,000); a `sparsevec` index caps at 1,000 NON-ZERO
+# elements (the type itself still holds 16,000 - see TYPE_DIM_LIMITS).
+INDEX_DIM_LIMITS = {"vector": 2_000, "halfvec": 4_000, "bit": 64_000, "sparsevec": 1_000}
 
 
 def storage_bytes(dimensions: int) -> int:
@@ -721,3 +724,46 @@ def index_health_check(
         ]
         out[f"hnsw_ef_search_{ef}"] = sum(scores) / len(scores)
     return out
+
+
+# ---------------------------------------------------------------------------
+# Offline demo: `python pgvector_sim.py`
+# ---------------------------------------------------------------------------
+
+
+def _demo() -> None:
+    a, b = [1.0, 2.0, 2.0], [2.0, 4.0, 1.0]
+    print("topic 25 - pgvector semantics, miniaturised (offline demo)")
+    print(f"operators on {a} vs {b}:")
+    print(f"  <-> {l2_distance(a, b):.4f}   <=> {cosine_distance(a, b):.4f}"
+          f"   <#> {negative_inner_product(a, b):.4f}")
+
+    table, queries = build_corpus(seed=7)
+    print(f"corpus: {len(table)} unit vectors, {table.dimensions} dims, 5 seeded clusters")
+    print("no index yet ->", table.plan())
+    q = queries[0]
+    exact = table.search(q, k=5)
+    ivf = IVFFlatIndex(table, lists=10, seed=42).build()
+    hnsw = HNSWIndex(table, m=8, ef_construction=64, seed=42).build()
+    print("with an index ->", ivf.plan())
+    for label, got in [
+        ("exact", exact),
+        ("ivf probes=1", ivf.search(q, k=5, probes=1)),
+        ("ivf probes=5", ivf.search(q, k=5, probes=5)),
+        ("hnsw ef=40", hnsw.search(q, k=5, ef_search=40)),
+    ]:
+        ids = [row.id for row, _ in got]
+        print(f"  {label:14} top-5 ids = {ids}")
+    health = index_health_check(table, queries)
+    print("recall vs exact (the docs' health check):")
+    for key in sorted(health):
+        print(f"    {key:<22} {health[key]:.3f}")
+    filtered = hnsw.search(q, k=5, where={"cluster": 0}, ef_search=40)
+    iterative = hnsw.search(q, k=5, where={"cluster": 0}, ef_search=40, iterative=True)
+    print(f"WHERE cluster = 0 with ef_search=40: naive scan returns {len(filtered)},"
+          f" iterative scan returns {len(iterative)}")
+    print("plans - exact:", table.plan(), "| ivfflat:", ivf.plan(), "| hnsw:", hnsw.plan())
+
+
+if __name__ == "__main__":
+    _demo()

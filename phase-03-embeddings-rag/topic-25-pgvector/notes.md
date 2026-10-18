@@ -53,7 +53,7 @@ Type facts from the pgvector README, worth memorising:
 - **16,000 dimensions** max for the column type (`vector`, `halfvec`, `sparsevec`), **64,000 for `bit`**,
 - dimension is part of the type: `vector(1536)` is NOT `vector(768)`; mismatched inserts error out (never silent coercion) — mirrored by `test_dimension_mismatch_raises_like_an_insert`,
 - element values must be finite (no NaN/Infinity); zero vectors are legal but *skipped by cosine indexes* and return NaN cosine distance,
-- v0.7+ siblings: **`halfvec`** (2 bytes/element — halve storage; indexable to 4,000 dims), **`bit`** (binary quantization — Hamming `<~>` / Jaccard `<%>`), **`sparsevec`** (sparse vectors for BM25-style sparse embeddings),
+- v0.7+ siblings: **`halfvec`** (2 bytes/element — halve storage; indexable to 4,000 dims), **`bit`** (binary quantization — Hamming `<~>` / Jaccard `<%>`; indexable to 64,000 dims), **`sparsevec`** (sparse vectors for BM25-style sparse embeddings; indexable to 1,000 non-zero elements),
 - use **`COPY ... FORMAT BINARY`** for bulk loads (much faster than row-by-row INSERTs).
 
 ---
@@ -153,6 +153,12 @@ Knobs (build: `m` links per point per layer, `ef_construction` candidate size; q
 
 One gotcha Crunchy Data found in the wild: the planner prefers HNSW with **simple queries** — CTEs/joins can dislodge it. `EXPLAIN` until the plan shows `Index Scan using ..._hnsw_idx`, then add complexity back.
 
+Operations around the index (from the pgvector README's performance section):
+
+- **`CREATE INDEX ... CONCURRENTLY`** (or HNSW/IVFFlat equivalents) in production so building doesn't block writes;
+- build-time memory is its own knob: a larger **`maintenance_work_mem`** (via `SET maintenance_work_mem = '8GB'`, say) can make HNSW builds dramatically faster, and **`max_parallel_maintenance_workers`** spreads the work across cores;
+- HNSW indexes make **vacuum slow** — if `VACUUM` is dragging on a big quadrant of your database, `REINDEX INDEX CONCURRENTLY` the vector index first, then vacuum;
+
 ### 5.4 IVFFlat vs HNSW — the decision table
 
 | | **IVFFlat** | **HNSW** |
@@ -178,7 +184,7 @@ SELECT ...;
 COMMIT;
 ```
 
-Compare ANN results against exact on real queries (recall@k); schedule it — it is the equivalent of `CHECK (last_known_good)` for your index. The module's `index_health_check` does exactly this dance offline, returning `{ivfflat_probes_1: 0.64, ... ivfflat_probes_5: 1.0, hnsw_ef_search_40: ...}`.
+Compare ANN results against exact on real queries (recall@k); schedule it — it is the equivalent of `CHECK (last_known_good)` for your index. The module's `index_health_check` does exactly this dance offline; on the 50-row fixture it returns `{ivfflat_probes_1: 0.92, ivfflat_probes_3: 1.0, ivfflat_probes_5: 1.0, hnsw_ef_search_16: 1.0, hnsw_ef_search_40: 1.0}` — i.e. at toy scale only the default probes=1 embarrasses IVFFlat, which is exactly the shape of the real problem (defaults quietly costing recall).
 
 ---
 
@@ -199,7 +205,7 @@ With an ANN index, **filtering happens after the index scan**: the index already
 
 ### 6.2 The fixes, in order of increasing effort
 
-1. **Iterative index scans** (pgvector 0.8+): keep scanning the index until enough rows match (bounded by `hnsw.max_scan_tuples` / `ivfflat.max_probes`); `strict_order` keeps exact ordering, `relaxed_order` trades slight disorder for recall (use a materialized CTE to re-sort). Mirrored by `iterative=True` in both index classes.
+1. **Iterative index scans** (pgvector 0.8+): keep scanning the index until enough rows match — bounded by `hnsw.max_scan_tuples` (default 20,000) or `ivfflat.max_probes` (default: your `lists` count); `strict_order` keeps exact ordering, `relaxed_order` trades slight disorder for recall (use a materialized CTE to re-sort). Note the trigger: pgvector only switches to iterative mode when the filter would otherwise return **no** rows; you still raise ef_search yourself when the matching fraction is small-but-nonzero. Mirrored by `iterative=True` in both index classes.
 2. **Raise ef_search / probes** (and LIMIT) — cheap band-aid, more work per query.
 3. **Partial index** for a few distinct filtered values:
    `CREATE INDEX ... USING hnsw (...) WHERE (header_path = 'Return Policy');` — the module's `VectorTable.search(where=...)` is the mental model for what stays inside,

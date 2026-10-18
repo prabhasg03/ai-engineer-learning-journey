@@ -520,3 +520,38 @@ def is_returnable(item, days_since_purchase):
 
 Photograph the box before opening. Carriers deny claims without photos, and our support team needs those images to open a claim with the shipping partner within the first 48 hours after delivery is recorded in the tracking system.
 """
+
+
+# ---------------------------------------------------------------------------
+# Offline demo: `python chunking.py`
+# ---------------------------------------------------------------------------
+
+
+def _demo() -> None:
+    doc = SAMPLE_DOCUMENT
+    print("topic 24 - chunking: three strategies on SAMPLE_DOCUMENT")
+    print(f"document = {len(doc)} chars (~{estimate_token_count(doc)} estimated tokens)")
+    rows = [
+        ("fixed", fixed_size_chunks(doc, size=200)),
+        ("fixed+overlap", fixed_size_chunks(doc, size=200, overlap=50)),
+        ("sentence", sentence_chunks(doc, max_chars=300)),
+        ("paragraph", paragraph_chunks(doc, max_chars=600)),
+        ("markdown", markdown_chunks(doc, max_chars=800)),
+        ("budget", token_budget_chunks(doc, budget_tokens=120)),
+    ]
+    print("strategy       chunks avg  max  mid-sent  mid-table  broken-fences")
+    for name, chunks in rows:
+        r = report(chunks, doc)
+        broken = sum(1 for c in chunks if not balanced_fences(c.text))
+        print(f"{name:14} {r.chunk_count:6} {r.avg_chars:4.0f} {r.max_chars:4}"
+              f"{r.mid_sentence_cuts:10}{mid_table_cut_count(chunks):11}{broken:14}")
+    header = markdown_chunks(doc, 800)[1].metadata.get("header_path")
+    print(f"markdown metadata example: header_path = {header!r}")
+    overlapped = rows[1][1]
+    if len(overlapped) >= 2:
+        print(f"overlap example: chunk[1] begins with the tail of chunk[0]:"
+              f" {overlap_text(overlapped[0], overlapped[1])[:40]!r}")
+
+
+if __name__ == "__main__":
+    _demo()

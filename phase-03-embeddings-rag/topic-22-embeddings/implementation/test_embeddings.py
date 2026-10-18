@@ -35,7 +35,7 @@ def test_tokenize_splits_and_lowercases():
     assert tokenize("The DOG's ball!") == ["the", "dog's", "ball"]
 
 
-def test_someKnown_tokenization_contract():
+def test_tokenize_mixed_words_and_digits():
     toks = tokenize("Puppy Wag-Tail 42")
     assert toks == ["puppy", "wag", "tail", "42"]
 
@@ -84,7 +84,7 @@ def build_embedder() -> CooccurrenceEmbedder:
     return CooccurrenceEmbedder(EXAMPLE_CORPUS, window=2)
 
 
-def test_cooccembedder_vocabsize_bigger_than_a_handful():
+def test_cooccurrence_vocab_is_bigger_than_a_handful():
     emb = build_embedder()
     assert emb.dimensions > 15
 
@@ -188,16 +188,19 @@ def test_hashing_shared_trigrams_pull_run_and_running_together():
 
 
 def test_hashing_is_morphology_not_semantics():
-    # The trap the caveats section warns about: a hashing embedder cannot
-    # tell that a puppy is a pet but a spreadsheet is not, when the two
-    # strings share no letters. "puppy" and "iceskating" share no trigrams.
+    # The trap the caveats section warns about: a hashing embedder knows
+    # only LETTERS. It pulls "puppy" toward "puppies" (shared trigrams)
+    # but has nothing tying it to "dog pet" - although semantically a
+    # puppy IS a pet. Zero semantic knowledge; the co-occurrence embedder
+    # above is the one that gets that relationship (see
+    # test_dog_and_puppy_are_neighbors_but_dog_and_stock_are_not).
     e = HashingEmbedder(dimensions=64)
-    pet = e.embed("puppy")
-    pet2 = e.embed("dog pet")
-    paper = e.embed("iceskating")
-    assert abs(cosine_similarity(pet, pet2) - 0.0) < 1.0  # any relationship is cosmetic
-    assert cosine_similarity(pet, pet2) < 1.0
-    assert cosine_similarity(pet, paper) < cosine_similarity(pet, pet2)
+    puppy = e.embed("puppy")
+    morphological = e.embed("puppies")
+    pet = e.embed("dog pet")
+    assert cosine_similarity(puppy, morphological) > 0.0
+    assert cosine_similarity(puppy, morphological) > cosine_similarity(puppy, pet)
+    assert abs(cosine_similarity(puppy, pet)) < 0.3
 
 
 # -- dimensions, truncation (Matryoshka-style), storage ---------------------

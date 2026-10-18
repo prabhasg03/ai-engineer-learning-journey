@@ -52,6 +52,8 @@ The **overlap band-aid**: windows of 200 with 50-char overlap raise retrieval *r
 - the duplicated text appears in k results as multiple near-identical rows, diluting the top-k with near-duplicates,
 - and it does nothing for mid-table or mid-code cuts (sameness is not structure).
 
+Concrete starting numbers from the sources (not laws — measure): Pinecone's chunking guide floats a **256-token chunk** as a common baseline (padded up to ~512 with breather room) and an overlap of **10–20% of chunk length**; NVIDIA's policy-document walkthrough landed on essentially the same shape (±256-token chunks, ±15–20% overlap). Our demo's 200-char/50-overlap window is 25% overlap — deliberately at the greedy end so the duplicate tax is visible.
+
 `test_overlap_is_the_completeness_band_aid` pins both effects. Use overlap when you cannot detect structure — cheapest fix for cheap chunkers — not as a permanent architecture.
 
 ---
@@ -69,6 +71,14 @@ Structure you can identify avoids cutting the units that carry meaning:
 - **Where real systems stop:** tables as row groups with the header echoed into each one (`[Product | \n | Laptops | …]`), question-response pairs (support tickets), YAML/JSON-keys, emails (quoted thread per segment), rows of logs.
 
 Semantic-aware splitters (recursive character, then "embed sentence clusters and merge adjacent on cosine similarity, then embed clusters") sit *between* paragraph and markdown; they cost more compute but are the natural next step after this topic's hand-written strategies.
+
+Pinecone's chunking guide draws the same space as **five levels of granularity**, which is a good mental map of where our four strategies sit:
+
+1. specific splitting (single sentences / fixed rules) — our `sentence_chunks`,
+2. recursive character splitting (the "split, too big? split again" loop) — a paragraph/budget variant,
+3. document-specific splitters (markdown, code, tables, transcripts) — our `markdown_chunks`,
+4. semantic splitting — embeddings decide boundaries (the sentence-cluster merge above),
+5. agentic / LLM-driven chunking — a model decides where to cut (expensive; only worth it when structure fails).
 
 ---
 
@@ -117,17 +127,17 @@ Module survey:
 
 - `Chunk` dataclass — id, text, start/end (character offsets into the ORIGINAL text), strategy, metadata (`header_path`, `hard_split`, `tokens`, `sentences`).
 - `fixed_size_chunks` (size + overlap, rejects overlap ≥ size), `split_sentences` (abbreviation/exclam-safe), `sentence_chunks`, `paragraph_chunks`, `markdown_chunks` (heading path + fences), `token_budget_chunks` (chars/4 estimator or yours).
-- `estimates_token_count` / `.token_estimate` (chars/4 heuristic; swap `tokenizer_estimate` for a real counter).
+- `estimate_token_count` / the `Chunk.token_estimate` property (chars/4 heuristic; swap `tokenizer_estimate` for a real counter).
 - Diagnostics: `is_sentence_end`, `mid_sentence_cut_count`, `mid_table_cut_count`, `balanced_fences`, `report`/`ChunkReport`.
 - `SAMPLE_DOCUMENT` — policy text with headings, a long paragraph, an abbreviation + `!!!`, a markdown table, and a fenced code block: exactly the joints that punish naive windowing.
 
 The notebook builds the full trade-off table on it:
 
 ```text
-strategy   chunk count  avg/max chars   mid-sentence cuts  fences intact?
-fixed      7            ~197/200        6                  cut
-sentence    7           ~196/275        0                  all
-markdown    3           ~460/508        0                  all
+strategy        chunk count  avg/max chars   mid-sentence cuts  extra seams
+fixed           7            ~197/200        6                  2 table edges, 2 broken fences
+sentence        7            ~196/275        0                  none
+markdown        3            ~460/508        0                  none; header_path on every chunk
 ```
 
 (run the notebook for your numbers; the *pattern* — fine-grained windows buy broken sentences; the structure-aware version has the fewest cuts and the cleanest chunks — is the point.)
