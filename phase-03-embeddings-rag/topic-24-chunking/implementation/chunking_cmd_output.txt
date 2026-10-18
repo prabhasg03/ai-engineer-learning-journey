@@ -1,0 +1,13 @@
+> C:\Python312\python.exe chunking.py
+topic 24 - chunking: three strategies on SAMPLE_DOCUMENT
+document = 1381 chars (~346 estimated tokens)
+strategy       chunks avg  max  mid-sent  mid-table  broken-fences
+fixed               7  197  200         6          2             2
+fixed+overlap       9  198  200         8          3             3
+sentence            7  196  275         0          0             0
+paragraph          19   72  294        14          0             2
+markdown            3  460  508         0          0             0
+budget              4  343  423         0          0             0
+markdown metadata example: header_path = 'Return Policy > Exclusions'
+overlap example: chunk[1] begins with the tail of chunk[0]: ' our returns center. Items must be unuse'
+[exit code = 0]

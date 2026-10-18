@@ -1,0 +1,49 @@
+> C:\Python312\python.exe -m pytest -v
+============================= test session starts =============================
+platform win32 -- Python 3.12.5, pytest-9.1.1, pluggy-1.6.0 -- C:\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: E:\ai-engineering-learning\phase-03-embeddings-rag\topic-25-pgvector\implementation
+plugins: anyio-4.15.1
+collecting ... collected 38 items
+
+test_pgvector_sim.py::test_l2_distance_pythagoras PASSED                 [  2%]
+test_pgvector_sim.py::test_cosine_distance_identity PASSED               [  5%]
+test_pgvector_sim.py::test_negative_inner_product_sign PASSED            [  7%]
+test_pgvector_sim.py::test_operator_table_contents PASSED                [ 10%]
+test_pgvector_sim.py::test_dimension_mismatch_raises_like_an_insert PASSED [ 13%]
+test_pgvector_sim.py::test_type_and_index_dim_limits PASSED              [ 15%]
+test_pgvector_sim.py::test_storage_bytes_formula PASSED                  [ 18%]
+test_pgvector_sim.py::test_zero_vector_cosine_distance_is_nan PASSED     [ 21%]
+test_pgvector_sim.py::test_exact_search_returns_sorted_topk PASSED       [ 23%]
+test_pgvector_sim.py::test_exact_search_upsert_and_delete PASSED         [ 26%]
+test_pgvector_sim.py::test_exact_search_duplicate_id_raises PASSED       [ 28%]
+test_pgvector_sim.py::test_exact_search_k_semantics PASSED               [ 31%]
+test_pgvector_sim.py::test_exact_search_where_dict PASSED                [ 34%]
+test_pgvector_sim.py::test_exact_search_where_callable PASSED            [ 36%]
+test_pgvector_sim.py::test_seq_plan_vs_index_plan PASSED                 [ 39%]
+test_pgvector_sim.py::test_build_corpus_fixture_shape_and_ids PASSED     [ 42%]
+test_pgvector_sim.py::test_kmeans_anchors_each_cluster_with_one_center PASSED [ 44%]
+test_pgvector_sim.py::test_kmeans_deterministic_seed PASSED              [ 47%]
+test_pgvector_sim.py::test_kmeans_rejects_more_lists_than_vectors PASSED [ 50%]
+test_pgvector_sim.py::test_ivfflat_built_on_empty_table_raises PASSED    [ 52%]
+test_pgvector_sim.py::test_ivfflat_search_returns_k_rows_sorted PASSED   [ 55%]
+test_pgvector_sim.py::test_ivfflat_probes_equals_lists_is_exact PASSED   [ 57%]
+test_pgvector_sim.py::test_ivfflat_recall_monotonic_in_probes PASSED     [ 60%]
+test_pgvector_sim.py::test_ivfflat_defaults_to_probes_one PASSED         [ 63%]
+test_pgvector_sim.py::test_ivfflat_probes_clamped PASSED                 [ 65%]
+test_pgvector_sim.py::test_ivfflat_where_filter_and_iterative PASSED     [ 68%]
+test_pgvector_sim.py::test_ivfflat_plan_string PASSED                    [ 71%]
+test_pgvector_sim.py::test_ivfflat_deterministic_rebuilds PASSED         [ 73%]
+test_pgvector_sim.py::test_hnsw_recall_is_high_at_default_ef PASSED      [ 76%]
+test_pgvector_sim.py::test_hnsw_recall_improves_with_ef PASSED           [ 78%]
+test_pgvector_sim.py::test_hnsw_deterministic_rebuilds_same_graph PASSED [ 81%]
+test_pgvector_sim.py::test_hnsw_every_node_reachable_in_layer0_and_entry_point_exists PASSED [ 84%]
+test_pgvector_sim.py::test_hnsw_where_filter_applied_after_scan PASSED   [ 86%]
+test_pgvector_sim.py::test_hnsw_plan_string PASSED                       [ 89%]
+test_pgvector_sim.py::test_hnsw_m_rejected_below_two PASSED              [ 92%]
+test_pgvector_sim.py::test_recall_function_semantics PASSED              [ 94%]
+test_pgvector_sim.py::test_index_health_check_produces_recall_scores PASSED [ 97%]
+test_pgvector_sim.py::test_shared_rows_report_identical_distances PASSED [100%]
+
+============================= 38 passed in 0.25s ==============================
+[exit code = 0]

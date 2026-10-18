@@ -1,0 +1,20 @@
+> C:\Python312\python.exe pgvector_sim.py
+topic 25 - pgvector semantics, miniaturised (offline demo)
+operators on [1.0, 2.0, 2.0] vs [2.0, 4.0, 1.0]:
+  <-> 2.4495   <=> 0.1271   <#> -12.0000
+corpus: 50 unit vectors, 3 dims, 5 seeded clusters
+no index yet -> Seq Scan on items
+with an index -> Index Scan using items_ivfflat_idx
+  exact          top-5 ids = [8, 0, 9, 6, 3]
+  ivf probes=1   top-5 ids = [8, 0, 9, 6, 5]
+  ivf probes=5   top-5 ids = [8, 0, 9, 6, 3]
+  hnsw ef=40     top-5 ids = [8, 0, 9, 6, 3]
+recall vs exact (the docs' health check):
+    hnsw_ef_search_16      1.000
+    hnsw_ef_search_40      1.000
+    ivfflat_probes_1       0.920
+    ivfflat_probes_3       1.000
+    ivfflat_probes_5       1.000
+WHERE cluster = 0 with ef_search=40: naive scan returns 5, iterative scan returns 5
+plans - exact: Seq Scan on items | ivfflat: Index Scan using items_ivfflat_idx | hnsw: Index Scan using items_hnsw_idx
+[exit code = 0]

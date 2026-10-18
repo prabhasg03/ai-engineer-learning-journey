@@ -1,0 +1,42 @@
+> C:\Python312\python.exe -m pytest -v
+============================= test session starts =============================
+platform win32 -- Python 3.12.5, pytest-9.1.1, pluggy-1.6.0 -- C:\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: E:\ai-engineering-learning\phase-03-embeddings-rag\topic-22-embeddings\implementation
+plugins: anyio-4.15.1
+collecting ... collected 31 items
+
+test_embeddings.py::test_tokenize_splits_and_lowercases PASSED           [  3%]
+test_embeddings.py::test_tokenize_mixed_words_and_digits PASSED          [  6%]
+test_embeddings.py::test_norm_of_l2_normalized_is_one PASSED             [  9%]
+test_embeddings.py::test_l2_normalize_of_zero_vector_stays_zero PASSED   [ 12%]
+test_embeddings.py::test_l2_normalize_preserves_direction PASSED         [ 16%]
+test_embeddings.py::test_cosine_same_direction_is_one PASSED             [ 19%]
+test_embeddings.py::test_cosine_orthogonal_is_zero PASSED                [ 22%]
+test_embeddings.py::test_cosine_symmetric PASSED                         [ 25%]
+test_embeddings.py::test_cosine_of_zero_vector_is_nan_like_pgvector PASSED [ 29%]
+test_embeddings.py::test_cooccurrence_vocab_is_bigger_than_a_handful PASSED [ 32%]
+test_embeddings.py::test_embeddings_always_unit_vectors PASSED           [ 35%]
+test_embeddings.py::test_deterministic_across_instances PASSED           [ 38%]
+test_embeddings.py::test_similar_meaning_lands_nearby_regardless_of_wording PASSED [ 41%]
+test_embeddings.py::test_dog_and_puppy_are_neighbors_but_dog_and_stock_are_not PASSED [ 45%]
+test_embeddings.py::test_unknown_word_contributes_nothing PASSED         [ 48%]
+test_embeddings.py::test_same_text_is_self_similar_one PASSED            [ 51%]
+test_embeddings.py::test_ppmi_values_are_non_negative PASSED             [ 54%]
+test_embeddings.py::test_hashing_respects_chosen_dimensions PASSED       [ 58%]
+test_embeddings.py::test_hashing_deterministic_independent_of_process_salt PASSED [ 61%]
+test_embeddings.py::test_hashing_different_texts_differ PASSED           [ 64%]
+test_embeddings.py::test_hashing_output_on_unit_sphere PASSED            [ 67%]
+test_embeddings.py::test_hashing_shared_trigrams_pull_run_and_running_together PASSED [ 70%]
+test_embeddings.py::test_hashing_is_morphology_not_semantics PASSED      [ 74%]
+test_embeddings.py::test_truncate_keeps_leading_dimensions_and_renormalises PASSED [ 77%]
+test_embeddings.py::test_truncate_beyond_original_dimensions_raises PASSED [ 80%]
+test_embeddings.py::test_neighbor_stability_degrades_gracefully_not_catastrophically PASSED [ 83%]
+test_embeddings.py::test_truncating_without_renormalising_breaks_the_unit_sphere PASSED [ 87%]
+test_embeddings.py::test_storage_bytes_match_pgvector_accounting PASSED  [ 90%]
+test_embeddings.py::test_one_million_1536_dim_vectors_are_gigabytes PASSED [ 93%]
+test_embeddings.py::test_contrastive_score_separates_good_from_bad_embedder_on_domain PASSED [ 96%]
+test_embeddings.py::test_hashing_wins_when_domain_is_about_letters_not_meaning PASSED [100%]
+
+============================= 31 passed in 0.08s ==============================
+[exit code = 0]

@@ -1,0 +1,45 @@
+> C:\Python312\python.exe -m pytest -v
+============================= test session starts =============================
+platform win32 -- Python 3.12.5, pytest-9.1.1, pluggy-1.6.0 -- C:\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: E:\ai-engineering-learning\phase-03-embeddings-rag\topic-23-cosine-similarity\implementation
+plugins: anyio-4.15.1
+collecting ... collected 34 items
+
+test_cosine.py::test_hand_computation_dot_product PASSED                 [  2%]
+test_cosine.py::test_hand_computation_magnitudes PASSED                  [  5%]
+test_cosine.py::test_hand_computation_cosine_is_four_fifths PASSED       [  8%]
+test_cosine.py::test_hand_computation_angle_matches_arccos PASSED        [ 11%]
+test_cosine.py::test_hand_computation_cosine_distance_is_point_two PASSED [ 14%]
+test_cosine.py::test_hand_computation_record_matches_lived_computations PASSED [ 17%]
+test_cosine.py::test_same_vector_similarity_is_one PASSED                [ 20%]
+test_cosine.py::test_opposite_vector_similarity_is_minus_one PASSED      [ 23%]
+test_cosine.py::test_orthogonal_similarity_is_zero PASSED                [ 26%]
+test_cosine.py::test_45_and_90_and_180_degree_angles PASSED              [ 29%]
+test_cosine.py::test_higher_dimensions_hand_example PASSED               [ 32%]
+test_cosine.py::test_magnitude_invariance_scaling_one_side PASSED        [ 35%]
+test_cosine.py::test_magnitude_invariance_scaling_both_sides PASSED      [ 38%]
+test_cosine.py::test_euclidean_distance_is_NOT_magnitude_invariant PASSED [ 41%]
+test_cosine.py::test_cosine_bounded_between_minus_one_and_one PASSED     [ 44%]
+test_cosine.py::test_symmetry PASSED                                     [ 47%]
+test_cosine.py::test_bad_lengths_raise PASSED                            [ 50%]
+test_cosine.py::test_zero_vector_is_nan_like_pgvector PASSED             [ 52%]
+test_cosine.py::test_l2_distance_matches_pythagoras PASSED               [ 55%]
+test_cosine.py::test_cosine_distance_identity_one_minus_similarity PASSED [ 58%]
+test_cosine.py::test_negative_inner_product_equals_minus_dot PASSED      [ 61%]
+test_cosine.py::test_negative_inner_product_extremes PASSED              [ 64%]
+test_cosine.py::test_unit_vectors_euclidean_vs_chord_identity PASSED     [ 67%]
+test_cosine.py::test_ranking_by_euclidean_matches_cosine_on_unit_vectors PASSED [ 70%]
+test_cosine.py::test_numpy_matches_pure_python PASSED                    [ 73%]
+test_cosine.py::test_numpy_query_length_mismatch_raises PASSED           [ 76%]
+test_cosine.py::test_numpy_rank_by_similarity_best_first_and_skips_nan PASSED [ 79%]
+test_cosine.py::test_numpy_ranking_matches_a_normalized_pure_python_ranking PASSED [ 82%]
+test_cosine.py::test_sweep_extremes PASSED                               [ 85%]
+test_cosine.py::test_precision_recall_in_bounds_and_f1_is_harmonic_mean PASSED [ 88%]
+test_cosine.py::test_higher_threshold_raises_precision_lowers_recall PASSED [ 91%]
+test_cosine.py::test_best_f1_threshold_lands_in_the_gap PASSED           [ 94%]
+test_cosine.py::test_calibration_report_is_printable_and_sorted PASSED   [ 97%]
+test_cosine.py::test_thresholds_are_per_corpus_not_universal PASSED      [100%]
+
+============================= 34 passed in 0.16s ==============================
+[exit code = 0]

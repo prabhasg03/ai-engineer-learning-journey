@@ -1,0 +1,15 @@
+> C:\Python312\python.exe embeddings.py
+topic 22 - embeddings: meaning as geometry (offline demo)
+cooccurrence embedder over EXAMPLE_CORPUS: 110-d vectors
+(one axis per vocab word; similar words keep similar company)
+embed('a loyal young dog') nearest vocab words: a=0.745, dog=0.703, loyal=0.693
+embed('the playful puppy') nearest vocab words: puppy=0.768, playful=0.713, the=0.584
+embed('bond yields climb') nearest vocab words: yields=0.813, bond=0.813, after=0.611
+cos(dog, loyal) = 0.357   cos(dog, yields) = 0.000
+hashing embedder: 64-d by construction, unit length = True
+  slice to 16-d and re-normalise, still unit: True
+  slice to 32-d and re-normalise, still unit: True
+  slice to 64-d and re-normalise, still unit: True
+matryoshka cut to 8 dims: 2/5 of the top-5 word neighbours survive
+storage_bytes(1536) = 6152 bytes/row (pgvector accounting)
+[exit code = 0]
