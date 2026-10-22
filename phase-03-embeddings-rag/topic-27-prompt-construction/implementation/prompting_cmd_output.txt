@@ -1,0 +1,33 @@
+> C:\Python312\python.exe prompting.py
+topic 27 - prompt construction from retrieved context (offline demo)
+
+1. ordering strategies
+  as_retrieved [('gold-edge', 0.9), ('gold-mid', 0.8), ('n1', 0.7), ('n2', 0.6), ('n3', 0.5)]
+  best_first   [('gold-edge', 0.9), ('gold-mid', 0.8), ('n1', 0.7), ('n2', 0.6), ('n3', 0.5)]
+  worst_first  [('n3', 0.5), ('n2', 0.6), ('n1', 0.7), ('gold-mid', 0.8), ('gold-edge', 0.9)]
+  sandwich     [('gold-edge', 0.9), ('n1', 0.7), ('n2', 0.6), ('n3', 0.5), ('gold-mid', 0.8)]
+
+2. lost in the middle (simulated attention)
+  weights n=5: [0.267, 0.167, 0.133, 0.167, 0.267]
+  edge=0.267 middle=0.133 (50% of an edge)
+
+3. deduplication
+  kept: ['a', 'd']
+  removed: [('c', 'near_duplicate', 'a'), ('b', 'exact_duplicate', 'a')]
+
+4. budget plan (900 tokens)
+  instructions=76 question=7 evidence=653 reserve=150 overhead=14
+
+5. assembly
+  prompt order: ['gold-edge', 'n1', 'n2', 'n3', 'gold-mid']
+  citations: {'gold-edge': 1, 'n1': 2, 'n2': 3, 'n3': 4, 'gold-mid': 5}
+  used 165/900 tokens; dropped=[] truncated=[]
+
+6. injection hygiene
+  instruction-like lines removed: 1
+  attack still present: False
+  neutralised tag: text [/context] more
+
+7. citation validation
+  invalid markers: [9]
+[exit code = 0]

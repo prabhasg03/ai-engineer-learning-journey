@@ -1,0 +1,56 @@
+> C:\Python312\python.exe pipeline.py
+topic 26 - the retrieval pipeline end to end (offline demo)
+
+1. first ingest
+  returns   new_document  chunks=3 inserted=3 embedded=3 batches=1
+  shipping  new_document  chunks=2 inserted=2 embedded=2 batches=1
+  warranty  new_document  chunks=2 inserted=2 embedded=2 batches=1
+
+2. re-ingest the same document: idempotent
+  unchanged: embedded=0 unchanged=3 new_batch_calls=0
+
+3. edit one paragraph: only one chunk re-embedded
+  content_changed: updated=1 unchanged=2 embedded=1
+
+4. shrink the document: stale chunks pruned
+  content_changed: deleted=2 rows_left=1
+
+5. batch embedding: requests, not texts
+  9 chunks -> 3 batch requests (batch_size=4), 9 texts embedded
+
+6. reindex trigger: profile change
+  chunker change -> profile_changed
+  rebuild: embedded=3 deleted=3
+
+7. trace one document through all eight stages
+trace: warranty -> 'How long do manufacturer warranties cover defects?'
+  ingest    new_document: 2 embedded, 0 unchanged, 0 pruned
+            warnings: ['none']
+  chunk     2 chunks, max 112 chars
+            chunk_ids: ['warranty#00', 'warranty#01']
+  embed     2 rows x 8192 dims, 0 zero vectors
+            batches: 1
+            model: hashing-8192-v1
+  store     2 rows total; profile hashing-8192-v1|8192|paragraph-v1|200
+            chunks_for_document: 2
+  query     query vector norm 1.000
+            zero_query: False
+  retrieve  2 hits for k=3 (missing 1)
+            hits: [('warranty#00', 0.4865), ('warranty#01', 0.0)]
+  assemble  228/700 chars, 2 citations
+            dropped: ['none']
+  answer    quoted 1 citation(s)
+            text: Manufacturer warranties cover defects for 12 months from the purchase date. [1]
+            citations: [1]
+
+8. a silent failure: morphology
+  hits: [('warranty#01', 0.14), ('returns#00', 0.0), ('returns#01', 0.0)]
+  answer: Warranty claims require the original receipt and the serial number printed on the device. [1]
+  (the chunk with the real answer, warranty#00, was never retrieved)
+
+9. diagnostics
+  query     zero_query     query embedded to a zero vector: no result can match
+  retrieve  short_k        retrieved 7 rows for k=50
+  assemble  budget_drop    7 chunk(s) dropped by the context budget
+  answer    abstained      answerer found no supporting sentence (abstained)
+[exit code = 0]
