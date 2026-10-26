@@ -193,13 +193,13 @@ Client            API              QueryService        Postgres         Embed AP
 5. **Assembly.** Exact/near dedupe; sandwich ordering; token budget; static prompt skeleton;
    contiguous markers; source metadata per block. Assembly report kept for diagnostics.
 6. **Pre-generation abstention.** If no candidates, all scores below the calibrated floor, or the
-   evidence budget fits zero chunks → `abstained=true`, `reason=no_relevant_evidence`, no chat call.
+   evidence budget fits zero chunks → `abstained=true`, `abstention_reason=no_relevant_evidence`, no chat call.
 7. **Generation.** Chat provider returns structured JSON. Schema failure → one repair request. If
    the breaker is open → labelled extractive fallback (top sentences from top chunks) or `503`,
    depending on configuration; never an unlabelled answer.
 8. **Validation.** Marker range check, sentence coverage check, optional weak-support heuristic.
    Failure → one repair attempt with the offending sentences and allowed markers; failure again →
-   `abstained=true`, `reason=ungrounded_answer`, `grounded=false`.
+   `abstained=true`, `abstention_reason=ungrounded_answer`, `grounded=false`.
 9. **Response.** Answer, citations with source/line/URL/excerpt, usage, timings, index metadata,
    degraded label, request ID. Query event logged without secrets.
 10. **Deadline.** The whole request has a 30 s budget; each stage checks remaining time. Exhaustion →

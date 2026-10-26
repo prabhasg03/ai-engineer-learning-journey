@@ -135,7 +135,7 @@ Full component, sequence, data-model, and circuit-breaker diagrams live in
 | [`docs/demo-script.md`](docs/demo-script.md) | Three-minute portfolio demo and failure-mode demo |
 | [`docs/risk-register.md`](docs/risk-register.md) | Risks, triggers, mitigations |
 | [`docs/interview-notes.md`](docs/interview-notes.md) | Likely questions and the reasoning to defend |
-| [`docs/decisions.md`](docs/decisions.md) | ADR-001 … ADR-012 with alternatives and consequences |
+| [`docs/decisions.md`](docs/decisions.md) | ADR-001 … ADR-013 with alternatives and consequences |
 | [`docs/openapi.yaml`](docs/openapi.yaml) | Machine-readable API contract |
 | [`corpus/`](corpus/) · [`evals/`](evals/) | Manifest schema, dataset schema, corpus/eval rules |
 
@@ -150,9 +150,9 @@ now so the implementation is built against a concrete run experience, not retrof
 
 ```bash
 git clone <repo-url> && cd <repo>/phase-03-embeddings-rag/project-01-rag-service
-cp .env.example .env          # add OPENAI_API_KEY (or use the Ollama profile)
+cp .env.example .env          # add SOURCELINE_OPENAI_API_KEY + SOURCELINE_ADMIN_TOKEN (or use Ollama)
 docker compose up -d db
-docker compose run --rm api python -m sourceline.db.migrate
+docker compose run --rm api python -m sourceline.migrate
 docker compose run --rm api python -m sourceline.ingest --root /corpus
 docker compose up api
 ```
@@ -171,8 +171,8 @@ curl -s http://127.0.0.1:8000/v1/query \
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
-$env:DATABASE_URL="postgresql://sourceline:sourceline@localhost:5432/sourceline"
-python -m sourceline.db.migrate
+$env:SOURCELINE_DATABASE_URL="postgresql://sourceline:sourceline@localhost:5432/sourceline"
+python -m sourceline.migrate
 python -m sourceline.ingest --root ..\..\
 uvicorn sourceline.main:app --reload
 ```

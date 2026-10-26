@@ -1,0 +1,42 @@
+sequenceDiagram
+    autonumber
+    participant Op as Operator
+    participant CLI as Ingest CLI
+    participant FS as Corpus files
+    participant DB as PostgreSQL
+    participant Emb as Embedding API
+
+    Op->>CLI: python -m sourceline.ingest --root ../..
+    CLI->>DB: pg_try_advisory_lock('sourceline:ingest')
+    alt lock held
+        CLI-->>Op: exit 5 (ingest_locked)
+    else lock acquired
+        CLI->>FS: discover allow-listed Markdown, sorted
+        CLI->>FS: read + normalise + hash
+        CLI->>DB: load existing documents/chunks
+        CLI->>CLI: plan new / changed / unchanged / deleted / profile_changed
+
+        loop each changed or new document
+            CLI->>CLI: parse headings, chunk, line ranges, IDs
+            alt chunks need embeddings
+                CLI->>Emb: embed batches (retry / Retry-After / deadline)
+                Emb-->>CLI: vectors or classified error
+            end
+            CLI->>DB: BEGIN
+            CLI->>DB: upsert chunks + delete stale IDs + update document
+            alt commit succeeds
+                CLI->>DB: COMMIT
+            else failure
+                CLI->>DB: ROLLBACK (old document remains)
+            end
+        end
+
+        opt --prune
+            CLI->>DB: delete documents absent from corpus (cascade chunks)
+        end
+
+        CLI->>DB: update index_state counts + built_at
+        CLI->>DB: write ingest_runs report
+        CLI->>DB: pg_advisory_unlock
+        CLI-->>Op: report + exit 0/3/4
+    end

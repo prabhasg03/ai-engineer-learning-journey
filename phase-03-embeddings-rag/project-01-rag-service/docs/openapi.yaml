@@ -1,0 +1,1419 @@
+openapi: 3.1.0
+info:
+  title: Sourceline API
+  version: 1.0.0
+  description: |
+    Retrieval-grounded answers over the AI-engineering curriculum, with citations that resolve to
+    file, heading, and line range.
+
+    This is the v1 contract. Additive response fields may appear without a version bump; clients
+    should ignore unknown response fields. Request objects reject unknown fields.
+
+    Authentication: public query/document endpoints are rate-limited and open by default. Admin
+    endpoints require a bearer token. `?debug=1` requires admin auth unless the local-only
+    `SOURCELINE_PUBLIC_DEBUG` flag is enabled.
+
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local development / Docker Compose
+  - url: https://sourceline-demo.example
+    description: Optional hosted demo
+
+tags:
+  - name: query
+  - name: documents
+  - name: health
+  - name: admin
+
+paths:
+  /:
+    get:
+      tags: [documents]
+      summary: Static demo UI
+      responses:
+        "200":
+          description: HTML demo page
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /v1/health:
+    get:
+      tags: [health]
+      summary: Liveness probe (no dependencies)
+      responses:
+        "200":
+          description: Process is serving HTTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /v1/ready:
+    get:
+      tags: [health]
+      summary: Readiness probe (database, migrations, index, profile)
+      responses:
+        "200":
+          description: Ready or degraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ready"
+        "503":
+          description: Not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ready"
+          headers:
+            Retry-After:
+              $ref: "#/components/headers/RetryAfter"
+
+  /v1/stats:
+    get:
+      tags: [health]
+      summary: Public aggregate statistics
+      responses:
+        "200":
+          description: Counts and 24-hour rates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stats"
+
+  /v1/query:
+    post:
+      tags: [query]
+      summary: Ask a question and get a grounded answer with citations
+      security:
+        - QueryBearer: []
+        - {}
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/Debug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+      responses:
+        "200":
+          description: Answered or deliberately abstained
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestId"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+            X-Index-Profile:
+              $ref: "#/components/headers/IndexProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+        "504":
+          $ref: "#/components/responses/GatewayTimeout"
+
+  /v1/query/stream:
+    post:
+      tags: [query]
+      summary: Reserved streaming endpoint (not implemented in v1)
+      security:
+        - QueryBearer: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+      responses:
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /v1/documents:
+    get:
+      tags: [documents]
+      summary: List indexed documents
+      parameters:
+        - $ref: "#/components/parameters/Phase"
+        - $ref: "#/components/parameters/Topic"
+        - $ref: "#/components/parameters/DocType"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Paginated document summaries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentList"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+
+  /v1/documents/{doc_key}:
+    get:
+      tags: [documents]
+      summary: Document metadata and chunk summaries
+      parameters:
+        - $ref: "#/components/parameters/DocKey"
+      responses:
+        "200":
+          description: Document detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/citations/{chunk_id}:
+    get:
+      tags: [documents]
+      summary: Resolve a citation to its stored source text
+      parameters:
+        - $ref: "#/components/parameters/ChunkId"
+      responses:
+        "200":
+          description: Citation detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CitationDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/admin/reindex:
+    post:
+      tags: [admin]
+      summary: Trigger ingestion (changed-only or full)
+      security:
+        - AdminBearer: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReindexRequest"
+      responses:
+        "200":
+          description: Dry-run plan (no writes)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReindexResult"
+        "202":
+          description: Run accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReindexResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /v1/admin/runs/{run_id}:
+    get:
+      tags: [admin]
+      summary: Ingest run status
+      security:
+        - AdminBearer: []
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200":
+          description: Run status and stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/admin/queries/{request_id}:
+    get:
+      tags: [admin]
+      summary: Query diagnostic record (four sets, timings, outcome)
+      security:
+        - AdminBearer: []
+      parameters:
+        - $ref: "#/components/parameters/RequestIdPath"
+      responses:
+        "200":
+          description: Query log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryLog"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    AdminBearer:
+      type: http
+      scheme: bearer
+      description: SOURCELINE_ADMIN_TOKEN
+    QueryBearer:
+      type: http
+      scheme: bearer
+      description: Optional SOURCELINE_QUERY_API_KEY; omit if unset
+
+  parameters:
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      schema:
+        type: string
+        pattern: "^req_[a-f0-9]{32}$"
+    Debug:
+      name: debug
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: false
+      description: Include diagnostics; requires admin auth unless local public debug is enabled.
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+        pattern: "^[\\x21-\\x7E]+$"
+    Phase:
+      name: phase
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 4
+    Topic:
+      name: topic
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 64
+    DocType:
+      name: doc_type
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/DocType"
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+        maxLength: 512
+    DocKey:
+      name: doc_key
+      in: path
+      required: true
+      description: |
+        POSIX relative path to the document. The server route uses a path converter, so slashes are
+        part of the value; URL-encode spaces/Unicode. `..`, backslashes, and absolute paths are
+        rejected.
+      schema:
+        type: string
+        minLength: 5
+        maxLength: 500
+      example: phase-03-embeddings-rag/topic-25-pgvector/notes.md
+    ChunkId:
+      name: chunk_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^c_[a-f0-9]{24}$"
+    RunId:
+      name: run_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^run_[a-f0-9]{32}$"
+    RequestIdPath:
+      name: request_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^req_[a-f0-9]{32}$"
+
+  headers:
+    XRequestId:
+      description: Request ID (echoed or generated)
+      schema:
+        type: string
+        pattern: "^req_[a-f0-9]{32}$"
+    RateLimitLimit:
+      description: Requests allowed in the current window
+      schema:
+        type: integer
+    RateLimitRemaining:
+      description: Requests remaining in the window
+      schema:
+        type: integer
+    RateLimitReset:
+      description: Unix epoch seconds when the window resets
+      schema:
+        type: integer
+    RetryAfter:
+      description: Seconds or HTTP-date before retrying
+      schema:
+        type: string
+    IndexProfile:
+      description: Active embedding profile key
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Invalid question/filter semantics
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+    Forbidden:
+      description: Surface disabled or insufficient scope
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+    NotFound:
+      description: Unknown document/chunk/run/request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+    Conflict:
+      description: Ingest lock held or idempotency key conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+    PayloadTooLarge:
+      description: Request body exceeds 32 KB
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+    Unprocessable:
+      description: Schema, type, range, or unknown-field validation failure
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+    RateLimited:
+      description: Client rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/RateLimitLimit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/RateLimitRemaining"
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/RateLimitReset"
+    Internal:
+      description: Unclassified internal error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+    NotImplemented:
+      description: Reserved endpoint not implemented in v1
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+    Unavailable:
+      description: Dependency/index unavailable after retries
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+    GatewayTimeout:
+      description: Overall request deadline exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestId"
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+
+  schemas:
+    DocType:
+      type: string
+      enum: [notes, meta, readme, other]
+
+    QueryRequest:
+      type: object
+      additionalProperties: false
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 3
+          maxLength: 2000
+        top_k:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 8
+        candidate_k:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 40
+        filters:
+          $ref: "#/components/schemas/QueryFilters"
+        answer:
+          $ref: "#/components/schemas/AnswerOptions"
+        debug:
+          type: boolean
+          default: false
+
+    QueryFilters:
+      type: object
+      additionalProperties: false
+      properties:
+        phase:
+          type: integer
+          minimum: 1
+          maximum: 4
+        topic:
+          type: integer
+          minimum: 1
+          maximum: 64
+        doc_type:
+          $ref: "#/components/schemas/DocType"
+        path_prefix:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: POSIX path prefix; no `..`, no `%`/`_` wildcards.
+
+    AnswerOptions:
+      type: object
+      additionalProperties: false
+      properties:
+        max_words:
+          type: integer
+          minimum: 40
+          maximum: 400
+          default: 200
+        style:
+          type: string
+          enum: [concise, detailed]
+          default: concise
+
+    QueryResponse:
+      type: object
+      required:
+        - request_id
+        - answer
+        - citations
+        - abstained
+        - grounded
+        - usage
+        - timings_ms
+        - index
+        - model
+      properties:
+        request_id:
+          type: string
+          pattern: "^req_[a-f0-9]{32}$"
+        answer:
+          type: string
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Citation"
+        abstained:
+          type: boolean
+        abstention_reason:
+          type: [string, "null"]
+          enum: [no_relevant_evidence, insufficient_evidence, ungrounded_answer, invalid_model_output, index_empty, null]
+        grounded:
+          type: boolean
+        degraded:
+          oneOf:
+            - $ref: "#/components/schemas/Degraded"
+            - type: "null"
+        closest_sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClosestSource"
+        usage:
+          $ref: "#/components/schemas/Usage"
+        timings_ms:
+          $ref: "#/components/schemas/Timings"
+        index:
+          $ref: "#/components/schemas/IndexInfo"
+        model:
+          $ref: "#/components/schemas/ModelInfo"
+        debug:
+          oneOf:
+            - $ref: "#/components/schemas/DebugInfo"
+            - type: "null"
+
+    Citation:
+      type: object
+      required: [marker, chunk_id, doc_id, title, heading, lines, score, excerpt]
+      properties:
+        marker:
+          type: integer
+          minimum: 1
+        chunk_id:
+          type: string
+          pattern: "^c_[a-f0-9]{24}$"
+        doc_id:
+          type: string
+        title:
+          type: string
+        heading:
+          type: string
+        lines:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: integer
+            minimum: 1
+        url:
+          type: [string, "null"]
+        score:
+          type: number
+        excerpt:
+          type: string
+          maxLength: 240
+
+    ClosestSource:
+      type: object
+      required: [doc_id, heading, lines, score]
+      properties:
+        doc_id:
+          type: string
+        heading:
+          type: string
+        lines:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: integer
+        score:
+          type: number
+
+    Degraded:
+      type: object
+      required: [mode, reason]
+      properties:
+        mode:
+          type: string
+          enum: [extractive, lexical]
+        reason:
+          type: string
+
+    Usage:
+      type: object
+      required:
+        - prompt_tokens
+        - completion_tokens
+        - total_tokens
+        - evidence_tokens
+        - budget_tokens
+        - estimated_cost_usd
+      properties:
+        prompt_tokens:
+          type: integer
+          minimum: 0
+        completion_tokens:
+          type: integer
+          minimum: 0
+        total_tokens:
+          type: integer
+          minimum: 0
+        evidence_tokens:
+          type: integer
+          minimum: 0
+        budget_tokens:
+          type: integer
+          minimum: 0
+        estimated_cost_usd:
+          type: number
+          minimum: 0
+
+    Timings:
+      type: object
+      properties:
+        embed:
+          type: integer
+          minimum: 0
+        retrieve:
+          type: integer
+          minimum: 0
+        assemble:
+          type: integer
+          minimum: 0
+        generate:
+          type: integer
+          minimum: 0
+        validate:
+          type: integer
+          minimum: 0
+        total:
+          type: integer
+          minimum: 0
+
+    IndexInfo:
+      type: object
+      required: [profile, age_seconds, document_count, chunk_count]
+      properties:
+        profile:
+          type: string
+        built_at:
+          type: [string, "null"]
+          format: date-time
+        age_seconds:
+          type: integer
+          minimum: 0
+        document_count:
+          type: integer
+          minimum: 0
+        chunk_count:
+          type: integer
+          minimum: 0
+        source_commit:
+          type: [string, "null"]
+        stale:
+          type: boolean
+
+    ModelInfo:
+      type: object
+      required: [embedding, chat]
+      properties:
+        embedding:
+          type: string
+        chat:
+          type: string
+
+    DebugInfo:
+      type: object
+      properties:
+        retrieval:
+          $ref: "#/components/schemas/RetrievalDebug"
+        assembly:
+          $ref: "#/components/schemas/AssemblyDebug"
+        validation:
+          $ref: "#/components/schemas/ValidationDebug"
+
+    RetrievalDebug:
+      type: object
+      properties:
+        candidate_k:
+          type: integer
+        ef_search:
+          type: integer
+        returned:
+          type: integer
+        filters_applied:
+          type: object
+          additionalProperties:
+            type: [string, integer, "null"]
+        top_score:
+          type: number
+        score_floor:
+          type: number
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/Candidate"
+        dropped:
+          type: array
+          items:
+            $ref: "#/components/schemas/Dropped"
+
+    Candidate:
+      type: object
+      required: [rank, chunk_id, doc_id, heading, score]
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+        chunk_id:
+          type: string
+        doc_id:
+          type: string
+        heading:
+          type: string
+        score:
+          type: number
+
+    Dropped:
+      type: object
+      required: [chunk_id, reason]
+      properties:
+        chunk_id:
+          type: string
+        reason:
+          type: string
+          enum: [duplicate, budget, score_floor]
+        kept:
+          type: [string, "null"]
+
+    AssemblyDebug:
+      type: object
+      properties:
+        evidence_count:
+          type: integer
+        evidence_tokens:
+          type: integer
+        budget_tokens:
+          type: integer
+        instruction_tokens:
+          type: integer
+        question_tokens:
+          type: integer
+        reserve_tokens:
+          type: integer
+        overhead_tokens:
+          type: integer
+        order:
+          type: array
+          items:
+            type: string
+        prompt_sha256:
+          type: string
+        citation_map:
+          type: object
+          additionalProperties:
+            type: string
+
+    ValidationDebug:
+      type: object
+      properties:
+        citation_valid:
+          type: boolean
+        sentence_coverage:
+          type: number
+          minimum: 0
+          maximum: 1
+        invalid_markers:
+          type: array
+          items:
+            type: integer
+        repair_attempted:
+          type: boolean
+        weak_support:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorDetail"
+
+    ErrorDetail:
+      type: object
+      required: [code, message, retryable, request_id]
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable error code from the contract table.
+          enum:
+            - invalid_question
+            - invalid_filter
+            - unauthorized
+            - forbidden
+            - document_not_found
+            - chunk_not_found
+            - run_not_found
+            - ingest_locked
+            - idempotency_conflict
+            - payload_too_large
+            - validation_error
+            - rate_limited
+            - internal_error
+            - not_implemented
+            - invalid_upstream_response
+            - index_not_ready
+            - index_profile_mismatch
+            - upstream_unavailable
+            - upstream_rate_limited
+            - circuit_open
+            - database_unavailable
+            - budget_exhausted
+            - deadline_exceeded
+        message:
+          type: string
+        retryable:
+          type: boolean
+        request_id:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    RunError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Ingestion failure class (for example `invalid_encoding`, `interrupted`).
+        message:
+          type: string
+
+    Health:
+      type: object
+      required: [status, service, version, uptime_seconds]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        service:
+          type: string
+          enum: [sourceline]
+        version:
+          type: string
+        uptime_seconds:
+          type: integer
+          minimum: 0
+
+    Ready:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ready, degraded, not_ready]
+        checks:
+          $ref: "#/components/schemas/ReadyChecks"
+        reason:
+          type: [string, "null"]
+
+    ReadyChecks:
+      type: object
+      properties:
+        database:
+          $ref: "#/components/schemas/Check"
+        pgvector:
+          $ref: "#/components/schemas/PgvectorCheck"
+        migrations:
+          $ref: "#/components/schemas/MigrationCheck"
+        index:
+          $ref: "#/components/schemas/IndexCheck"
+        providers:
+          $ref: "#/components/schemas/ProvidersCheck"
+
+    Check:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, fail]
+        latency_ms:
+          type: integer
+          minimum: 0
+
+    PgvectorCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, fail]
+        version:
+          type: [string, "null"]
+
+    MigrationCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, fail]
+        current:
+          type: [string, "null"]
+
+    IndexCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, building, empty, failed, mismatch]
+        profile:
+          type: [string, "null"]
+        document_count:
+          type: integer
+          minimum: 0
+        chunk_count:
+          type: integer
+          minimum: 0
+        built_at:
+          type: [string, "null"]
+          format: date-time
+        age_seconds:
+          type: integer
+          minimum: 0
+        stale:
+          type: boolean
+        source_commit:
+          type: [string, "null"]
+
+    ProvidersCheck:
+      type: object
+      properties:
+        embedding:
+          $ref: "#/components/schemas/ProviderCheck"
+        chat:
+          $ref: "#/components/schemas/ProviderCheck"
+
+    ProviderCheck:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        model:
+          type: string
+
+    Stats:
+      type: object
+      properties:
+        documents:
+          type: integer
+        chunks:
+          type: integer
+        index_age_seconds:
+          type: integer
+        last_ingest:
+          oneOf:
+            - $ref: "#/components/schemas/LastIngest"
+            - type: "null"
+        queries_24h:
+          type: integer
+        abstention_rate_24h:
+          type: number
+          minimum: 0
+          maximum: 1
+        p95_latency_ms_24h:
+          type: integer
+
+    LastIngest:
+      type: object
+      properties:
+        run_id:
+          type: string
+        status:
+          type: string
+        finished_at:
+          type: [string, "null"]
+          format: date-time
+
+    DocumentList:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentSummary"
+        next_cursor:
+          type: [string, "null"]
+        total:
+          type: integer
+          minimum: 0
+
+    DocumentSummary:
+      type: object
+      required:
+        - doc_id
+        - title
+        - doc_type
+        - chunk_count
+        - content_hash
+        - word_count
+        - indexed_at
+      properties:
+        doc_id:
+          type: string
+        title:
+          type: string
+        phase:
+          type: [integer, "null"]
+        topic:
+          type: [integer, "null"]
+        doc_type:
+          $ref: "#/components/schemas/DocType"
+        chunk_count:
+          type: integer
+        content_hash:
+          type: string
+        word_count:
+          type: integer
+        indexed_at:
+          type: string
+          format: date-time
+        source_url:
+          type: [string, "null"]
+
+    DocumentDetail:
+      type: object
+      required: [doc_id, title, doc_type, content_hash, word_count, indexed_at, chunks]
+      properties:
+        doc_id:
+          type: string
+        title:
+          type: string
+        phase:
+          type: [integer, "null"]
+        topic:
+          type: [integer, "null"]
+        doc_type:
+          $ref: "#/components/schemas/DocType"
+        content_hash:
+          type: string
+        word_count:
+          type: integer
+        indexed_at:
+          type: string
+          format: date-time
+        source_url:
+          type: [string, "null"]
+        chunks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChunkSummary"
+
+    ChunkSummary:
+      type: object
+      required: [chunk_id, heading, lines, token_count, ordinal]
+      properties:
+        chunk_id:
+          type: string
+        heading:
+          type: string
+        lines:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: integer
+        token_count:
+          type: integer
+        ordinal:
+          type: integer
+
+    CitationDetail:
+      type: object
+      required: [chunk_id, doc_id, title, heading, lines, content, content_hash]
+      properties:
+        chunk_id:
+          type: string
+        doc_id:
+          type: string
+        title:
+          type: string
+        heading:
+          type: string
+        lines:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: integer
+        content:
+          type: string
+        content_hash:
+          type: string
+        source_url:
+          type: [string, "null"]
+
+    ReindexRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        scope:
+          type: string
+          enum: [changed, full]
+          default: changed
+        prune:
+          type: boolean
+          default: true
+        dry_run:
+          type: boolean
+          default: false
+        confirm:
+          type: string
+          enum: [FULL_REINDEX]
+          description: Required when scope=full.
+
+    ReindexResult:
+      type: object
+      required: [status]
+      properties:
+        run_id:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [queued, running, success, partial, failed, skipped]
+        plan:
+          $ref: "#/components/schemas/ReindexPlan"
+        message:
+          type: [string, "null"]
+
+    ReindexPlan:
+      type: object
+      properties:
+        documents_seen:
+          type: integer
+        documents_new:
+          type: integer
+        documents_changed:
+          type: integer
+        documents_unchanged:
+          type: integer
+        documents_deleted:
+          type: integer
+        documents_profile_changed:
+          type: integer
+
+    RunStatus:
+      type: object
+      required: [run_id, status, mode, trigger, started_at, profile_key]
+      properties:
+        run_id:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, success, partial, failed, skipped]
+        mode:
+          type: string
+          enum: [changed, full, dry_run]
+        trigger:
+          type: string
+          enum: [cli, admin]
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: [string, "null"]
+          format: date-time
+        profile_key:
+          type: string
+        source_commit:
+          type: [string, "null"]
+        stats:
+          $ref: "#/components/schemas/RunStats"
+        error:
+          oneOf:
+            - $ref: "#/components/schemas/RunError"
+            - type: "null"
+
+    RunStats:
+      type: object
+      properties:
+        documents_seen:
+          type: integer
+        documents_new:
+          type: integer
+        documents_changed:
+          type: integer
+        documents_unchanged:
+          type: integer
+        documents_deleted:
+          type: integer
+        documents_failed:
+          type: integer
+        chunks_inserted:
+          type: integer
+        chunks_updated:
+          type: integer
+        chunks_deleted:
+          type: integer
+        chunks_reused:
+          type: integer
+        chunks_embedded:
+          type: integer
+        embedding_calls:
+          type: integer
+        embedding_tokens:
+          type: integer
+        duration_ms:
+          type: integer
+
+    QueryLog:
+      type: object
+      required: [request_id, created_at, question_sha256, abstained]
+      properties:
+        request_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        question_sha256:
+          type: string
+        question_redacted:
+          type: [string, "null"]
+        filters:
+          type: object
+          additionalProperties: true
+        retrieved:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetrievedItem"
+        prompted:
+          type: array
+          items:
+            type: string
+        cited:
+          type: array
+          items:
+            type: string
+        abstained:
+          type: boolean
+        abstention_reason:
+          type: [string, "null"]
+        grounded:
+          type: [boolean, "null"]
+        degraded:
+          type: [string, "null"]
+        timings_ms:
+          $ref: "#/components/schemas/Timings"
+        usage:
+          $ref: "#/components/schemas/UsageSummary"
+        error_code:
+          type: [string, "null"]
+
+    RetrievedItem:
+      type: object
+      required: [chunk_id, score, rank]
+      properties:
+        chunk_id:
+          type: string
+        score:
+          type: number
+        rank:
+          type: integer
+          minimum: 1
+        doc_id:
+          type: string
+
+    UsageSummary:
+      type: object
+      properties:
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer

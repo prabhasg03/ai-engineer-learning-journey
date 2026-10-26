@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sourceline.local/schemas/eval-case.json",
+  "title": "Sourceline evaluation case",
+  "description": "One JSONL line in evals/datasets/*.jsonl.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "question",
+    "category",
+    "answerable",
+    "gold_doc_ids",
+    "required_facts",
+    "difficulty",
+    "split"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^q-[a-z0-9][a-z0-9-]{2,79}$",
+      "description": "Stable, unique case ID; never reuse for a different question."
+    },
+    "question": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 2000
+    },
+    "category": {
+      "type": "string",
+      "enum": ["factual", "comparison", "procedural", "unanswerable"]
+    },
+    "answerable": {
+      "type": "boolean"
+    },
+    "gold_doc_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[^\\\\]+\\.md$",
+        "allOf": [
+          { "not": { "pattern": "(^|/)\\.\\.(/|$)" } },
+          { "not": { "pattern": "^/" } }
+        ]
+      },
+      "uniqueItems": true
+    },
+    "gold_chunk_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^c_[a-f0-9]{24}$"
+      },
+      "uniqueItems": true,
+      "description": "Optional; may become stale after a re-chunk. Gold docs + required facts are durable."
+    },
+    "required_facts": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 3 },
+      "uniqueItems": true,
+      "description": "Atomic, human-checkable facts a correct answer must contain."
+    },
+    "forbidden_claims": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 3 },
+      "uniqueItems": true
+    },
+    "reference_answer": {
+      "type": "string",
+      "description": "Optional human reference; never sent to the system."
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "phase": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "topic": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "doc_type": {
+          "type": "string",
+          "enum": ["notes", "meta", "readme", "other"]
+        },
+        "path_prefix": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["easy", "medium", "hard"]
+    },
+    "split": {
+      "type": "string",
+      "enum": ["dev", "test"]
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "answerable": { "const": true } },
+        "required": ["answerable"]
+      },
+      "then": {
+        "properties": {
+          "gold_doc_ids": { "minItems": 1 },
+          "required_facts": { "minItems": 1 },
+          "category": {
+            "not": { "const": "unanswerable" }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "answerable": { "const": false } },
+        "required": ["answerable"]
+      },
+      "then": {
+        "properties": {
+          "category": { "const": "unanswerable" },
+          "gold_doc_ids": { "maxItems": 0 },
+          "required_facts": { "maxItems": 0 }
+        }
+      }
+    }
+  ]
+}

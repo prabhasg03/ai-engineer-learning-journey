@@ -1,0 +1,100 @@
+erDiagram
+    documents ||--o{ chunks : "contains"
+    documents {
+        text doc_id PK
+        text title
+        text doc_type
+        smallint phase
+        smallint topic
+        text source_commit
+        char64 content_hash
+        integer byte_size
+        integer word_count
+        integer chunk_count
+        text profile_key
+        timestamptz indexed_at
+        jsonb metadata
+    }
+
+    chunks {
+        text chunk_id PK
+        text chunk_key
+        text doc_id FK
+        integer ordinal
+        text heading_path
+        text content
+        char64 content_hash
+        integer token_count
+        integer char_count
+        integer start_line
+        integer end_line
+        vector embedding
+        text embedding_model
+        smallint embedding_dimensions
+        text profile_key
+        text chunker_version
+        timestamptz indexed_at
+        jsonb metadata
+    }
+
+    index_state {
+        boolean singleton PK
+        text profile_key
+        text embedding_model
+        smallint embedding_dimensions
+        text chunker_version
+        text status
+        timestamptz built_at
+        text source_commit
+        integer document_count
+        integer chunk_count
+        timestamptz updated_at
+    }
+
+    ingest_runs {
+        text run_id PK
+        text mode
+        text trigger
+        text status
+        timestamptz started_at
+        timestamptz finished_at
+        text profile_key
+        text source_commit
+        jsonb stats
+        text error_code
+        text error_message
+    }
+
+    query_logs {
+        bigint id PK
+        text request_id
+        char64 question_sha256
+        text question_redacted
+        jsonb filters
+        jsonb retrieved
+        jsonb prompted
+        jsonb cited
+        boolean abstained
+        text abstention_reason
+        boolean grounded
+        jsonb degraded
+        real top_score
+        integer total_ms
+        integer prompt_tokens
+        integer completion_tokens
+        text model
+        text profile_key
+        text error_code
+        timestamptz created_at
+    }
+
+    idempotency_keys {
+        text key PK
+        text endpoint
+        char64 request_hash
+        smallint response_status
+        jsonb response_body
+        text run_id
+        timestamptz created_at
+        timestamptz expires_at
+    }

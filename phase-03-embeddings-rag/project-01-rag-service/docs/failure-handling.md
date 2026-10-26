@@ -119,7 +119,7 @@ Rules:
 - Header lookup is case-insensitive.
 - Integer seconds: non-negative; `0` means retry immediately (subject to jitter).
 - HTTP-date: parse with the standard HTTP-date parser; `retry_after = date - now`; clamp to 0 if past.
-- Cap at `retry_after_cap` (default 30 s for ingestion, 10 s for query paths).
+- Cap at `SOURCELINE_RETRY_AFTER_CAP_SECONDS` (default 30 s); query paths additionally clamp to 10 s.
 - Never trust a provider's `Retry-After` beyond the request deadline. If it exceeds the remaining
   budget, fail fast and propagate a capped value to the client.
 - A malformed value is treated as absent; log a warning with the provider and attempt, not the body.

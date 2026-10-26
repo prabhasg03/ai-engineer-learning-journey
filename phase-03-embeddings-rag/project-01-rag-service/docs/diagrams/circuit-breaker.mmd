@@ -1,0 +1,13 @@
+stateDiagram-v2
+    [*] --> CLOSED
+    CLOSED --> OPEN: 5 retryable failures in 30 s\n(or 5 consecutive)
+    OPEN --> HALF_OPEN: cooldown elapsed\n(30 s, doubles on repeated failure, cap 5 min)
+    HALF_OPEN --> CLOSED: 2 consecutive probe successes
+    HALF_OPEN --> OPEN: probe fails\n(cooldown doubles, capped)
+    OPEN --> OPEN: calls fail fast\n503 circuit_open + Retry-After
+    CLOSED --> CLOSED: 4xx config/validation\n(does not count)
+    note right of OPEN
+        One breaker per dependency:
+        embedding / chat / database.
+        Only retryable errors count.
+    end note

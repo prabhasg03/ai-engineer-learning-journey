@@ -465,9 +465,9 @@ If any check fails, the run is `failed`, `index_state.status='failed'`, and read
 ## 9. Freshness and citations
 
 - `documents.source_commit` and `index_state.source_commit` record the git commit at ingest.
-- `SOURCE_BASE_URL` (e.g. `https://github.com/<owner>/<repo>/blob`) builds citation URLs:
+- `SOURCELINE_SOURCE_BASE_URL` (e.g. `https://github.com/<owner>/<repo>/blob`) builds citation URLs:
   `{base}/{commit}/{doc_id}#L{start}-L{end}`.
-- If `SOURCE_BASE_URL` is unset, citations carry `doc_id`/`lines` only; the UI shows a local path. This
+- If `SOURCELINE_SOURCE_BASE_URL` is unset, citations carry `doc_id`/`lines` only; the UI shows a local path. This
   is the correct fallback for a private or non-GitHub checkout.
 - `/v1/ready` reports `age_seconds`. If `SOURCELINE_EXPECTED_COMMIT` is set and differs from
   `index_state.source_commit`, `stale=true` with a warning; the service still answers, because a stale

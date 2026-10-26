@@ -73,11 +73,11 @@ Demonstrate, in one runnable artifact:
 |---|---|---|
 | US-01 | As a reader, I ask a natural-language question and get a concise answer with citations. | Response has `answer`, ≥1 citation for every factual sentence, `grounded=true`, and markers resolve. |
 | US-02 | As a reader, I click a citation and see the exact source lines. | Citation contains `doc_id`, `heading`, `lines`, `url`/local path, and an excerpt that matches the indexed chunk. |
-| US-03 | As a reader, I ask something outside the corpus and get an honest refusal. | `abstained=true`, `reason="no_relevant_evidence"` or `"insufficient_evidence"`, no fabricated claim. |
+| US-03 | As a reader, I ask something outside the corpus and get an honest refusal. | `abstained=true`, `abstention_reason="no_relevant_evidence"` or `"insufficient_evidence"`, no fabricated claim. |
 | US-04 | As a reader, I narrow a question to a phase or topic. | `filters.phase`/`filters.topic` restrict retrieval; citations all satisfy the filter. |
 | US-05 | As an operator, I re-run ingestion without duplicating rows or paying to re-embed unchanged text. | Second run: `embedded=0`, `unchanged=docs`, identical counts. |
 | US-06 | As an operator, I edit one section and re-ingest. | Only affected chunks change; stale chunks are deleted. |
-| US-07 | As an operator, I can tell whether the index is stale or incomplete. | `/v1/ready` reports profile, document/chunk counts, `built_at`, `index_age_seconds`, `stale` flag. |
+| US-07 | As an operator, I can tell whether the index is stale or incomplete. | `/v1/ready` reports profile, document/chunk counts, `built_at`, `age_seconds`, `stale` flag. |
 | US-08 | As a developer, I can see why a question failed. | `?debug=1` returns candidate scores, drop reasons, evidence tokens, per-stage timings, and validation flags. |
 | US-09 | As a developer, I can run the whole suite offline. | `pytest -q` passes with fake providers and no network. |
 | US-10 | As an interviewer, I can see failure behaviour. | Fault-injection tests show 429/`Retry-After`, timeout, circuit-open, LLM-down, and DB-down paths. |
@@ -90,7 +90,8 @@ Demonstrate, in one runnable artifact:
 
 ### 4.1 In scope (v1)
 
-- Markdown corpus from this repository (Phase 1–3 notes plus root `README.md`/`SYLLABUS.md`).
+- Markdown corpus from this repository: the Phase 1–3 notes (38 files). Root `README.md`/`SYLLABUS.md`
+  are optional via `--include-meta`, not part of the default corpus.
 - Structural chunking, deterministic chunk IDs, line-level provenance.
 - Dense retrieval over pgvector with metadata filters.
 - Prompt assembly with dedupe, ordering, token budget, and citation markers.
@@ -134,9 +135,9 @@ Each requirement is testable. "MUST" is a release gate; "SHOULD" may slip with a
 | FR-07 | Embeddings MUST be generated in batches with a pinned model, dimensions, and profile key. | Report shows `chunks/64` requests (ceil); profile stored per row. |
 | FR-08 | Ingestion MUST be idempotent: unchanged documents cause zero embedding calls and zero row writes. | Second run asserts `embedded=0`, `inserted=0`, `updated=0`, counts unchanged. |
 | FR-09 | A changed document MUST insert/update only changed chunks and delete chunks no longer present. | Edit-one-section test; shrink test; row counts match. |
-| FR-10 | A changed embedding model, dimension, chunker version, or size profile MUST trigger a full reindex for affected documents. | `reindex_reason` test for each trigger. |
+| FR-10 | A changed embedding model, dimension, chunker version, or size profile MUST trigger a full corpus reindex. | `reindex_reason` test for each trigger. |
 | FR-11 | Ingestion MUST run under a database advisory lock so two runs cannot interleave. | Concurrent-run integration test returns exit code 5 / 409. |
-| FR-12 | An ingest run MUST produce an auditable report and exit code (`0` success, `3` partial, `4` dependency, `5` locked). | CLI transcript; `ingest_runs` row with stats JSON. |
+| FR-12 | An ingest run MUST produce an auditable report and a documented exit code (`0` success, `2` usage/config, `3` partial, `4` dependency, `5` locked, `6` invariant failure). | CLI transcript; `ingest_runs` row with stats JSON. |
 | FR-13 | A failed document MUST leave its previous indexed version intact (per-document transaction). | Fault injection during upsert; old chunks remain queryable. |
 | FR-14 | `--prune` MUST remove documents no longer present in the corpus. | Delete a fixture file, re-ingest, document count drops. |
 
@@ -159,11 +160,11 @@ Each requirement is testable. "MUST" is a release gate; "SHOULD" may slip with a
 | FR-22 | The prompt MUST be rendered from a static skeleton with dynamic slots; retrieved text MUST NOT enter the instruction region. | Template test; injection fixture cannot close `<context>`. |
 | FR-23 | The prompt MUST fit an explicit budget: total 6,000 tokens by default, answer reserve 700, instructions ≤ 400, question ≤ 100, overhead ≤ 100. | Assembly asserts `used ≤ total`; debug reports each component. |
 | FR-24 | Citation markers MUST be assigned after pruning, contiguously `1..n`, and stored in a chunk→marker map. | No gaps; dropped chunks have no marker. |
-| FR-25 | The answer MUST be structured JSON: `answer`, `abstained`, optional `reason`, and markers in the prose. | Pydantic validation; one repair attempt on schema failure. |
+| FR-25 | The answer MUST be structured JSON: `answer`, `abstained`, optional `abstention_reason`, and markers in the prose. | Pydantic validation; one repair attempt on schema failure. |
 | FR-26 | Every factual sentence in a non-abstained answer MUST contain at least one valid marker. | Sentence-coverage validator; failure triggers repair then abstention. |
 | FR-27 | Invalid or hallucinated markers MUST be rejected deterministically. | Validator unit test with `[9]` when only 5 chunks exist. |
 | FR-28 | The service MUST abstain before generation when no candidate clears the calibrated score floor. | Unanswerable fixture: no LLM call, `abstained=true`. |
-| FR-29 | The service MUST abstain when the model reports insufficient evidence or validation fails after repair. | Scripted fake LLM responses; `reason` is machine-readable. |
+| FR-29 | The service MUST abstain when the model reports insufficient evidence or validation fails after repair. | Scripted fake LLM responses; `abstention_reason` is machine-readable. |
 | FR-30 | `grounded` MUST be true only when citation validity and sentence coverage both pass. | Truth table tests for the four combinations. |
 | FR-31 | Responses MUST include `request_id`, citations with source/line metadata, usage, timings, index profile, and `degraded`. | Contract test against the OpenAPI schema. |
 
@@ -174,11 +175,11 @@ Each requirement is testable. "MUST" is a release gate; "SHOULD" may slip with a
 | FR-32 | `GET /v1/health` MUST report liveness without touching dependencies. | Returns 200 while DB is down (liveness only). |
 | FR-33 | `GET /v1/ready` MUST verify DB, pgvector, migrations, active profile, non-empty index, and freshness; return 503 with a machine reason otherwise. | Each failure injected in tests. |
 | FR-34 | `GET /v1/documents` MUST paginate document summaries with counts and hashes. | Cursor pagination test; no full corpus in one response. |
-| FR-35 | `GET /v1/documents/{doc_key}` MUST return metadata and chunk count, 404 when absent. | Path-encoded doc ID test. |
+| FR-35 | `GET /v1/documents/{doc_key}` MUST return metadata and chunk count, 404 when absent. | URL-encoded path test; traversal rejected. |
 | FR-36 | `GET /v1/citations/{chunk_id}` MUST return the stored source excerpt and line range. | Chunk from a query resolves byte-for-byte. |
 | FR-37 | `POST /v1/admin/reindex` MUST require a bearer admin token and an `Idempotency-Key`; concurrent runs → 409. | Auth/conflict/idempotency tests. |
 | FR-38 | `GET /v1/admin/runs/{run_id}` MUST expose status and stats. | Run lifecycle test. |
-| FR-39 | `?debug=1` (admin token required) MUST return retrieval/assembly diagnostics but never the system prompt or secrets. | Redaction test. |
+| FR-39 | `?debug=1` MUST require admin auth by default and return retrieval/assembly diagnostics, never the system prompt or secrets. A local-only `SOURCELINE_PUBLIC_DEBUG=true` may relax auth and MUST be rejected in hosted config. | Redaction + hosted-config test. |
 | FR-40 | The service MUST serve a static demo UI at `/` with answer, citations, source excerpt, and an unanswerable example. | Manual checklist + DOM smoke test. |
 | FR-41 | Query logs MUST capture the four sets (retrieved/prompted/cited), timings, tokens, abstention, degraded mode, and errors, with a 30-day retention job. | Log schema test; retention query documented. |
 | FR-42 | Request IDs MUST be accepted (`X-Request-ID`) or generated and echoed; every error includes one. | Middleware test. |
@@ -193,8 +194,8 @@ Each requirement is testable. "MUST" is a release gate; "SHOULD" may slip with a
 | FR-46 | A circuit breaker MUST guard embedding, chat, and DB connectivity, with CLOSED→OPEN→HALF_OPEN transitions. | State-machine test; open breaker returns 503 + `Retry-After`. |
 | FR-47 | SDK automatic retries MUST be disabled or accounted for so attempts do not multiply. | Configuration test / startup assertion. |
 | FR-48 | Ingestion writes MUST be idempotent (content-addressed chunks, upserts, run lock); admin reindex MUST be idempotent by key. | Replay test; repeated admin call returns the same run. |
-| FR-49 | When the LLM is unavailable, the service MUST return a labelled extractive answer from retrieved chunks or a clean 503, never a 500. | LLM-down test asserts `degraded="extractive"` and citations. |
-| FR-50 | When the embedding provider is unavailable at query time, the service MUST use lexical fallback if enabled, labelled `degraded="lexical"`, or return 503. | Embedding-down test. |
+| FR-49 | When the LLM is unavailable, the service MUST return a labelled extractive answer from retrieved chunks or a clean 503, never a 500. | LLM-down test asserts `degraded.mode="extractive"` and citations. |
+| FR-50 | When the embedding provider is unavailable at query time, the service MUST use lexical fallback if enabled, labelled `degraded.mode="lexical"`, or return 503. | Embedding-down test. |
 | FR-51 | Provider errors MUST NOT leak keys, raw bodies, or stack traces to clients. | Error-envelope test with a sensitive fake body. |
 
 ### 5.6 Evaluation
@@ -242,16 +243,16 @@ Each requirement is testable. "MUST" is a release gate; "SHOULD" may slip with a
 
 | Requirement | Decision |
 |---|---|
-| Corpus source | This repository: `phase-01-llm-fundamentals/`, `phase-02-llm-apis/`, `phase-03-embeddings-rag/`, `README.md`, `SYLLABUS.md` |
+| Corpus source | This repository: `phase-01-llm-fundamentals/`, `phase-02-llm-apis/`, `phase-03-embeddings-rag/` (38 notes). Root `README.md`/`SYLLABUS.md` are optional (`--include-meta`). |
 | Include rule | `**/*.md`, excluding `**/implementation/**`, `**/__pycache__/**`, `**/.pytest_cache/**`, `**/.venv/**`, and `project-01-rag-service/**` |
 | Encoding | UTF-8, BOM stripped, CRLF→LF normalised before hashing |
 | File size cap | 2 MB per file; oversized files rejected and reported |
 | Symlinks | Rejected during discovery (no traversal outside root) |
 | Document ID | POSIX relative path from repository root, e.g. `phase-03-embeddings-rag/topic-25-pgvector/notes.md` |
-| Chunk ID | Content-addressed: `c_` + first 24 hex of SHA-256(doc_id, heading_path, ordinal, content) |
-| Chunk key | Human-readable `doc_id#heading-slug#ordinal` for debugging |
+| Chunk ID | Content-addressed: `c_` + first 24 hex of SHA-256(doc_id, heading_path, content, occurrence), where occurrence disambiguates identical text in the same heading |
+| Chunk key | Human-readable `<heading-slug>#<ordinal>` (document implied by `doc_id`) for debugging |
 | Embedding profile | `markdown-h2-v1|1200|150|<model>|<dims>`; one active profile per index |
-| Source URL | `{SOURCE_BASE_URL}/{commit}/{doc_id}#L{start}-L{end}` when configured; local path otherwise |
+| Source URL | `{SOURCELINE_SOURCE_BASE_URL}/{commit}/{doc_id}#L{start}-L{end}` when configured; local path otherwise |
 | Retention | `query_logs` 30 days; `ingest_runs` 90 days; chunks/documents life of corpus |
 | Provenance | Every chunk stores heading path and inclusive line range; every citation resolves to it |
 
@@ -323,12 +324,12 @@ These do not block implementation; defaults are binding unless changed in an ADR
 
 | Question | Default |
 |---|---|
-| Include root `README.md`/`SYLLABUS.md`? | Yes, tagged `doc_type=meta` |
+| Include root `README.md`/`SYLLABUS.md`? | No by default; `--include-meta` opts in, tagged `doc_type=meta` |
 | Streaming? | Deferred (P2); reserve `/v1/query/stream` in the contract |
 | Hosted public demo? | Recommended; rate-limited, daily budget cap, no admin surface |
 | Local Ollama profile? | Supported if OpenAI-compatible; not a CI gate |
 | Query auth? | Public demo with IP rate limit; optional API key via config |
-| Store raw questions? | Store SHA-256 + redacted text; 30-day retention |
+| Store raw questions? | SHA-256 only by default; optional redacted text with `SOURCELINE_LOG_QUESTIONS=true`; 30-day retention |
 | Reranker? | No learned reranker in v1; deterministic ordering only |
 | Hybrid search? | No; lexical only as an embedding-outage fallback |
 | Exact model IDs? | Pin in `.env.example` at M1; never auto-upgrade |

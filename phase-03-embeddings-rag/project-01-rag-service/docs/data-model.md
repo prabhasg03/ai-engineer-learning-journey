@@ -228,7 +228,7 @@ CREATE TABLE query_logs (
     abstained           boolean NOT NULL,
     abstention_reason   text,
     grounded            boolean,
-    degraded            text,
+    degraded            jsonb,
     top_score           real,
     embed_ms            integer,
     retrieve_ms         integer,
@@ -557,7 +557,7 @@ per-query estimate is stored in `usage.estimated_cost_usd`; the hosted demo enfo
   `USAGE` on sequences; it does not need `CREATE EXTENSION` or superuser. Migrations run under a
   separate role. The vector extension is installed once by an operator.
 - **No secrets in the database.** Provider keys and the admin token are environment-only.
-- **Log minimisation.** Questions are hashed by default; raw text is opt-in. Answers are hashed by
+- **Log minimisation.** Questions are hashed by default; redacted text is opt-in. Answers are hashed by
   default. No IP/user-agent storage in `query_logs`.
 - **Corpus is public by design** (this repository). A future private corpus requires per-document
   authorization before retrieval; the schema has no ACL column in v1, and ADR-010 records that

@@ -35,7 +35,8 @@ semantics, examples, and limits; if the two disagree, the OpenAPI file wins and 
 The hosted demo keeps the public mode and enforces a daily spend cap.
 
 `POST /v1/query/stream` is **reserved** for a later SSE implementation and returns `501
-not_implemented` in v1. It is not part of the v1 OpenAPI contract.
+not_implemented` in v1. It appears in OpenAPI only to reserve the path; no streaming semantics are
+defined in v1.
 
 ---
 
@@ -178,7 +179,7 @@ is NFKC-normalised and whitespace-collapsed before validation; the original is n
 
 `answer` may contain Markdown. `citations[].excerpt` is a short (≤ 240 chars) verbatim slice for the
 UI; the full text is available from `GET /v1/citations/{chunk_id}`. `url` is omitted when
-`SOURCE_BASE_URL` is unset; `doc_id`, `heading`, and `lines` are always present.
+`SOURCELINE_SOURCE_BASE_URL` is unset; `doc_id`, `heading`, and `lines` are always present.
 
 ### 4.3 Response — abstained
 
@@ -405,10 +406,12 @@ grows).
 
 ### 6.2 Document detail
 
-`GET /v1/documents/phase-03-embeddings-rag%2Ftopic-25-pgvector%2Fnotes.md`
+`GET /v1/documents/phase-03-embeddings-rag/topic-25-pgvector/notes.md`
 
-The `doc_key` is the URL-encoded POSIX path. A server may accept unencoded slashes via a `:path`
-route, but clients must encode `/` as `%2F`. Response adds chunk summaries (no full text):
+The `doc_key` is the POSIX relative path. The server route uses a path converter, so slashes are part
+of the value; URL-encode spaces and Unicode, not the `/` separators. The server normalises the value,
+rejects `..`, backslashes, absolute paths, and anything outside the corpus root. Response adds chunk
+summaries (no full text):
 
 ```json
 {
@@ -607,6 +610,7 @@ secrets, raw provider bodies, SQL, or stack traces. The request ID is always pre
 | 503 | `upstream_rate_limited` | yes | Provider 429 exhausted; `Retry-After` capped |
 | 503 | `circuit_open` | yes | Breaker open; `Retry-After` = remaining cooldown |
 | 503 | `database_unavailable` | yes | Postgres/pool failure; retry |
+| 503 | `budget_exhausted` | no | Hosted daily spend cap reached; retry after midnight UTC |
 | 504 | `deadline_exceeded` | yes | Overall request budget exhausted |
 
 Mapping rules:
@@ -636,13 +640,13 @@ Mapping rules:
 | Query deadline | 30 s | Deadline object, 504 |
 | Query embed | 6 s total | Retry policy + deadline |
 | Chat | 25 s total | Retry policy + deadline |
-| Daily spend (hosted) | Configurable, default $5 | Budget counter, 503 `budget_exhausted` |
+| Daily spend (hosted) | Disabled by default; hosted example $5 | Budget counter, 503 `budget_exhausted` |
 | `query_logs` retention | 30 days | Maintenance job |
 | `ingest_runs` retention | 90 days | Maintenance job |
 | Idempotency TTL | 24 h | `idempotency_keys.expires_at` |
 
-Add `503 budget_exhausted` to the error table if the hosted cap is enabled (non-retryable until
-midnight UTC). The local build defaults the cap off.
+The hosted cap is disabled by default (`SOURCELINE_DAILY_BUDGET_USD=0`); when enabled, `budget_exhausted`
+is non-retryable until the UTC day resets.
 
 ---
 

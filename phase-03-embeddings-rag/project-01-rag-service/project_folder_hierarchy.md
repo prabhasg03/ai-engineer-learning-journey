@@ -41,7 +41,7 @@ phase-03-embeddings-rag/project-01-rag-service/
 │   ├── demo-script.md                         [now]
 │   ├── risk-register.md                       [now]
 │   ├── interview-notes.md                     [now]
-│   ├── decisions.md                           [now]   ADR-001 … ADR-012
+│   ├── decisions.md                           [now]   ADR-001 … ADR-013
 │   ├── openapi.yaml                           [now]   machine-readable API contract
 │   ├── diagrams/
 │   │   ├── architecture.mmd                   [now]
@@ -83,6 +83,7 @@ phase-03-embeddings-rag/project-01-rag-service/
 │       ├── ingest.py                          [build] CLI entry: `python -m sourceline.ingest`
 │       ├── migrate.py                         [build] CLI entry: `python -m sourceline.migrate`
 │       ├── eval.py                            [build] CLI entry: `python -m sourceline.eval`
+│       ├── maintenance.py                     [build] retention cleanup: logs, runs, idempotency
 │       │
 │       ├── api/
 │       │   ├── __init__.py
@@ -289,7 +290,7 @@ milestones create each path with its first real file and test.
 | Cross-layer failures | `tests/chaos/*` | Injected provider/DB faults |
 | Reviewer path | `tests/e2e/*` | Seed → query → citation resolution |
 
-Integration tests must skip with a clear message when `DATABASE_URL` is absent, but CI always sets
+Integration tests must skip with a clear message when `SOURCELINE_DATABASE_URL` is absent, but CI always sets
 it. Unit and contract tests must run with no network and no database.
 
 ---

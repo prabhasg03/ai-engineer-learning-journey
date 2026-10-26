@@ -1,0 +1,36 @@
+flowchart LR
+    UI["Demo UI / curl"] --> API["FastAPI API<br/>request-id · auth · rate limit · error envelope"]
+    CLI["Ingest CLI / admin reindex"] --> ING["IngestService<br/>discover → diff → chunk → embed → upsert → prune"]
+
+    API --> QS["QueryService<br/>embed → retrieve → assemble → generate → validate"]
+    API --> DOCS["DocumentService<br/>documents · citations · runs"]
+    API --> READY["Readiness<br/>DB · pgvector · migrations · profile"]
+
+    QS --> RES["Resilience<br/>classify · retry+jitter · Retry-After<br/>deadline · circuit breaker · bulkhead"]
+    ING --> RES
+
+    RES --> EMB["Embedding provider<br/>OpenAI-compatible / fake"]
+    RES --> CHAT["Chat provider<br/>structured JSON / fake"]
+
+    QS --> REPO["Repositories<br/>hand-written SQL"]
+    ING --> REPO
+    DOCS --> REPO
+    READY --> REPO
+    REPO --> DB[("PostgreSQL 16 + pgvector<br/>documents · chunks · ingest_runs<br/>query_logs · index_state · idempotency_keys")]
+
+    QS --> ASSEMBLE["Assembly<br/>dedupe · sandwich order · token budget<br/>static prompt · citation map"]
+    QS --> VALIDATE["Validation<br/>schema · marker range · sentence coverage"]
+
+    subgraph OBS["Observability"]
+        LOG["JSON logs + request IDs"]
+        MET["Prometheus metrics"]
+    end
+    API -.-> LOG
+    QS -.-> LOG
+    RES -.-> MET
+    ING -.-> LOG
+
+    subgraph OFFLINE["Offline"]
+        EVAL["Eval runner<br/>golden JSONL · metrics · attribution"]
+        EVAL --> QS
+    end

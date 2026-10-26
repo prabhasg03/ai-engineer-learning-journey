@@ -1,0 +1,54 @@
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant A as FastAPI
+    participant Q as QueryService
+    participant DB as PostgreSQL + pgvector
+    participant E as Embedding API
+    participant L as Chat API
+
+    C->>A: POST /v1/query
+    A->>A: request-id · auth · rate limit · validate
+    alt invalid request
+        A-->>C: 422 / 400 / 413 / 429
+    else valid
+        A->>Q: query(question, filters, budget)
+        Q->>DB: readiness + active profile
+        alt index not ready or profile mismatch
+            Q-->>A: 503 (reason, Retry-After)
+            A-->>C: error envelope
+        else ready
+            Q->>E: embed(question) with retry/breaker/deadline
+            alt embedding unavailable
+                Q->>DB: lexical fallback (FTS) if enabled
+                Note over Q: degraded.mode=lexical
+            else vector
+                Q->>DB: candidate_k cosine search with SQL pre-filters
+            end
+            DB-->>Q: candidates + scores
+            Q->>Q: dedupe → sandwich order → token budget → citation map
+            alt no evidence above floor
+                Q-->>A: abstained (no_relevant_evidence)
+                A-->>C: 200 abstained, no LLM call
+            else evidence
+                Q->>L: static prompt + structured output
+                alt chat unavailable
+                    Q->>Q: extractive answer from top evidence
+                    Note over Q: degraded.mode=extractive
+                end
+                L-->>Q: JSON answer or classified error
+                Q->>Q: schema check · marker range · sentence coverage
+                alt invalid and repair available
+                    Q->>L: one repair request
+                    L-->>Q: repaired JSON
+                end
+                alt still invalid
+                    Q-->>A: abstained (invalid_model_output / ungrounded_answer)
+                else valid
+                    Q-->>A: answer + citations + usage + timings
+                end
+                A-->>C: 200 grounded (or 200 abstained)
+            end
+        end
+        Q->>DB: insert query_logs (four sets, timings, outcome)
+    end
