@@ -2,10 +2,11 @@
 
 **A RAG service over a real document set: grounded answers with line-level citations.**
 
-> **Status: design blueprint.** This folder currently contains the specification, not the
-> application. Every `[build]` path in `project_folder_hierarchy.md` is intentionally absent
-> until the implementation milestone. The finished README (the one a hiring manager reads)
-> must replace the status banner and the "target quickstart" section with recorded output.
+> **Status: design blueprint + empty scaffold.** The specification is complete, and the target
+> folders plus every Python module listed in `project_folder_hierarchy.md` exist as zero-byte
+> placeholders. No application logic, configs, SQL, static assets, or Docker files are implemented
+> yet. The finished README (the one a hiring manager reads) must replace the status banner and the
+> "target quickstart" section with recorded output.
 
 Sourceline answers questions about the 28-topic AI-engineering curriculum in this repository.
 It ingests the actual Markdown notes, chunks and embeds them into PostgreSQL + pgvector, retrieves

@@ -1,11 +1,13 @@
 # Project Folder Hierarchy — Sourceline
 
-This is the **target** tree for the completed project. Only `[now]` files exist at the blueprint
-stage; every `[build]` path is created during implementation. The hierarchy is a contract: module
-boundaries, naming, and generated-vs-hand-written rules are part of the design.
+This is the **target** tree for the completed project. The `[now]` blueprint files exist, and every
+Python module is present as a **zero-byte scaffold file**. Non-Python `[build]` files (configs, SQL,
+Docker, static assets) are still unimplemented. The hierarchy is a contract: module boundaries,
+naming, and generated-vs-hand-written rules are part of the design.
 
-Legend: **[now]** blueprint artifact · **[build]** hand-written during implementation ·
-**[generated]** produced by a command, not edited · **[fixture]** test/eval data.
+Legend: **[now]** blueprint artifact · **[build]** hand-written during implementation (empty `.py`
+placeholder where listed) · **[generated]** produced by a command, not edited · **[fixture]**
+test/eval data.
 
 ```text
 phase-03-embeddings-rag/project-01-rag-service/
